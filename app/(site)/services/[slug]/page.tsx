@@ -27,7 +27,7 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
         <div className="service-detail-image" data-reveal>{image ? <img src={image} alt={alt} /> : <div className="photo-placeholder">{service.title}</div>}<span>THOUGHTFUL WORK. BUILT AROUND YOU.</span></div>
       </div>
     </div></section>
-    <section className="service-detail-body container"><aside data-reveal><span>THE DETAILS</span><p>Thoughtful work,<br/>built around your goals.</p><Link className="editorial-link" href="/contact">Discuss a project <span>↗</span></Link></aside><div className="detail-rich" data-reveal><RichText value={service.description} />{!service.description && <p>{service.summary}</p>}</div></section>
+    <section className="service-detail-body container"><aside data-reveal><span>THE DETAILS</span><p>Thoughtful work,<br/>built around your goals.</p><Link className="editorial-link" href="/contact">Discuss a project <span>↗</span></Link></aside><div className="detail-rich" data-reveal><RichText value={service.description} highlightQuotes={false} />{!service.description && <p>{service.summary}</p>}{service.secondDescription && <div className="detail-rich-second"><RichText value={service.secondDescription} /></div>}</div></section>
     <CTA />
   </main>
 }

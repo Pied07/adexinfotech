@@ -17,7 +17,7 @@ export default async function ServicesPage() {
         const alt = typeof serviceImage === 'object' && serviceImage ? serviceImage.alt || service.title : service.title
         return <Link className="services-photo-card" href={`/services/${service.slug}`} key={service.slug} data-reveal style={{ '--card-delay': `${(index % 3) * 90}ms` } as React.CSSProperties}>
           <div className="services-photo">{image ? <img src={image} alt={alt} loading="lazy" /> : <div className="photo-placeholder">{service.title}</div>}<span className="service-number">{String(index + 1).padStart(2, '0')}</span><span className="service-open">↗</span></div>
-          <div className="services-card-copy"><span>{service.category || 'Digital growth'}</span><h2>{service.title}</h2><p>{service.summary}</p></div>
+          <div className="services-card-copy"><span>{service.category || 'Digital growth'}</span><h2>{service.title}</h2><p className="service-card-summary">{service.summary}</p></div>
         </Link>
       })}</div>
     </section>

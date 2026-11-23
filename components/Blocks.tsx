@@ -10,8 +10,37 @@ export function richTextHasContent(value: unknown): boolean {
   if (typeof node.text === 'string' && node.text.trim()) return true
   return Object.values(node).some(richTextHasContent)
 }
-export function RichText({ value }: { value: unknown }) {
+export function RichText({ value, highlightQuotes = true }: { value: unknown; highlightQuotes?: boolean }) {
   if (!value || typeof value !== 'object') return null
   const root=(value as {root?:{children?:Array<Record<string,unknown>>}}).root
-  return <div className="rich-text">{root?.children?.map((node,index)=>{const text=Array.isArray(node.children)?node.children.map((c)=>typeof c==='object'?(c as {text?:string}).text||'':'').join(''):''; if(node.type==='heading') {const level=Number(node.tag?.toString().replace('h',''))||2;return level===3?<h3 key={index}>{text}</h3>:<h2 key={index}>{text}</h2>} if(node.type==='list') return <ul key={index}>{(node.children as Array<{children?:Array<{text?:string}>}>).map((li,i)=><li key={i}>{li.children?.map(c=>c.text).join('')}</li>)}</ul>; return <p key={index}>{text}</p>})}</div>
+  const renderNodes = (nodes: unknown, keyPrefix: string): ReactNode[] => {
+    if (!Array.isArray(nodes)) return []
+    return nodes.map((raw, index) => {
+      if (!raw || typeof raw !== 'object') return null
+      const node = raw as Record<string, unknown>
+      const key = `${keyPrefix}-${index}`
+      if (node.type === 'text') {
+        let text: ReactNode = String(node.text || '')
+        const format = Number(node.format || 0)
+        if (format & 1) text = <strong>{text}</strong>
+        if (format & 2) text = <em>{text}</em>
+        if (format & 4) text = <s>{text}</s>
+        if (format & 8) text = <u>{text}</u>
+        if (format & 16) text = <code>{text}</code>
+        return <span key={key}>{text}</span>
+      }
+      const children = renderNodes(node.children, key)
+      if (node.type === 'heading') return Number(String(node.tag).replace('h', '')) === 3 ? <h3 key={key}>{children}</h3> : <h2 key={key}>{children}</h2>
+      if (node.type === 'list') return node.listType === 'number' ? <ol key={key}>{children}</ol> : <ul key={key}>{children}</ul>
+      if (node.type === 'listitem') return <li key={key}>{children}</li>
+      if (node.type === 'quote') return highlightQuotes ? <blockquote key={key}>{children}</blockquote> : <p className="plain-quote" key={key}>{children}</p>
+      if (node.type === 'link' || node.type === 'autolink') return <a key={key} href={String(node.fields && typeof node.fields === 'object' ? (node.fields as Record<string, unknown>).url || '#' : '#')}>{children}</a>
+      if (node.type === 'table') return <div className="rich-table-wrap" key={key}><table><tbody>{children}</tbody></table></div>
+      if (node.type === 'tablerow') return <tr key={key}>{children}</tr>
+      if (node.type === 'tablecell') return Number(node.headerState) ? <th key={key}>{children}</th> : <td key={key}>{children}</td>
+      if (node.type === 'linebreak') return <br key={key} />
+      return <p key={key}>{children}</p>
+    }).filter((node): node is ReactNode => node !== null)
+  }
+  return <div className="rich-text">{renderNodes(root?.children, 'rich')}</div>
 }

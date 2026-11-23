@@ -1,5 +1,5 @@
 import { postgresAdapter } from '@payloadcms/db-postgres'
-import { lexicalEditor } from '@payloadcms/richtext-lexical'
+import { EXPERIMENTAL_TableFeature, lexicalEditor } from '@payloadcms/richtext-lexical'
 import { buildConfig } from 'payload'
 import { cloudinaryStorage } from 'payload-storage-cloudinary'
 import { Services } from './payload/collections/Services.ts'
@@ -28,7 +28,7 @@ export default buildConfig({
         },
       })]
     : [],
-  editor: lexicalEditor(),
+  editor: lexicalEditor({ features: ({ defaultFeatures }) => [...defaultFeatures, EXPERIMENTAL_TableFeature()] }),
   secret: process.env.PAYLOAD_SECRET!,
   db: postgresAdapter({
     pool: { connectionString: process.env.DATABASE_URI || '' },

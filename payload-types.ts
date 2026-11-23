@@ -168,8 +168,32 @@ export interface Service {
   slug: string;
   category?: string | null;
   eyebrow?: string | null;
+  /**
+   * Short listing copy. The public service tile displays a maximum of three lines.
+   */
   summary: string;
+  /**
+   * First detail section. Add paragraphs, headings, lists, or a table. Keep highlighted pull quotes for the second description.
+   */
   description?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  /**
+   * Optional second detail section. Use the quote button to add a highlighted line on a light blue background.
+   */
+  secondDescription?: {
     root: {
       type: string;
       children: {
@@ -463,6 +487,7 @@ export interface ServicesSelect<T extends boolean = true> {
   eyebrow?: T;
   summary?: T;
   description?: T;
+  secondDescription?: T;
   icon?: T;
   image?: T;
   featured?: T;
