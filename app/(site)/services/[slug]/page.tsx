@@ -8,7 +8,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params
   const cmsService = await getService(slug)
   const starter = starterServices.find((item) => serviceSlug(item.title) === slug)
-  const service = cmsService || (starter ? { ...starter, slug, image: undefined, description: undefined, seoTitle: undefined, seoDescription: undefined } : null)
+  const service = cmsService || (starter ? { ...starter, slug, image: undefined, description: undefined, secondDescription: undefined, seoTitle: undefined, seoDescription: undefined } : null)
   return service ? { title: service.seoTitle || service.title, description: service.seoDescription || service.summary } : {}
 }
 
@@ -16,7 +16,7 @@ export default async function ServicePage({ params }: { params: Promise<{ slug: 
   const { slug } = await params
   const cmsService = await getService(slug)
   const starter = starterServices.find((item) => serviceSlug(item.title) === slug)
-  const service = cmsService || (starter ? { ...starter, slug, image: undefined, description: undefined, seoTitle: undefined, seoDescription: undefined } : null)
+  const service = cmsService || (starter ? { ...starter, slug, image: undefined, description: undefined, secondDescription: undefined, seoTitle: undefined, seoDescription: undefined } : null)
   if (!service) notFound()
   const image = mediaURL(service.image) || process.env.NEXT_PUBLIC_SERVICE_IMAGE_URL
   const alt = typeof service.image === 'object' && service.image ? service.image.alt || service.title : service.title

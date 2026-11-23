@@ -40,7 +40,7 @@ export function RichText({ value, highlightQuotes = true }: { value: unknown; hi
       if (node.type === 'tablecell') return Number(node.headerState) ? <th key={key}>{children}</th> : <td key={key}>{children}</td>
       if (node.type === 'linebreak') return <br key={key} />
       return <p key={key}>{children}</p>
-    }).filter((node): node is ReactNode => node !== null)
+    }).filter((node) => node !== null)
   }
   return <div className="rich-text">{renderNodes(root?.children, 'rich')}</div>
 }

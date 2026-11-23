@@ -23,6 +23,6 @@ export const serviceCopy: Record<ServiceTitle, Copy> = {
 
 function textNode(text: string) { return { type: 'text', version: 1, text, format: 0, detail: 0, mode: 'normal', style: '' } }
 function block(type: string, text: string) { return { type, version: 1, direction: 'ltr', format: '', indent: 0, children: [textNode(text)] } }
-export function serviceRichText(paragraphs: string[], highlight?: string) {
-  return { root: { type: 'root', version: 1, direction: 'ltr', format: '', indent: 0, children: [...paragraphs.map((text) => block('paragraph', text)), ...(highlight ? [block('quote', highlight)] : [])] } }
+export function serviceRichText(paragraphs: string[], highlight?: string): NonNullable<import('../payload-types').Service['description']> {
+  return { root: { type: 'root', version: 1, direction: 'ltr', format: '', indent: 0, children: [...paragraphs.map((text) => block('paragraph', text)), ...(highlight ? [block('quote', highlight)] : [])] } } as NonNullable<import('../payload-types').Service['description']>
 }
