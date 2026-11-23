@@ -21,6 +21,6 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
       <div className="article-meta"><span>{post.author || 'Adex team'}</span><span>{post.publishedAt ? new Date(post.publishedAt).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }) : ''}</span></div>
     </div>
     {image && <img className="article-image" src={image} alt={alt} />}
-    <div className="article-content">{richTextHasContent(post.content) ? <RichText value={post.content} /> : <p>{post.excerpt}</p>}</div>
+    <div className="article-content detail-rich">{richTextHasContent(post.content) ? <RichText value={post.content} /> : <p>{post.excerpt}</p>}</div>
   </article><CTA /></main>
 }

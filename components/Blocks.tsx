@@ -8,6 +8,7 @@ export function richTextHasContent(value: unknown): boolean {
   if (Array.isArray(value)) return value.some(richTextHasContent)
   const node = value as Record<string, unknown>
   if (typeof node.text === 'string' && node.text.trim()) return true
+  if (node.type === 'table' || node.type === 'quote' || node.type === 'list' || node.type === 'upload') return true
   return Object.values(node).some(richTextHasContent)
 }
 export function RichText({ value, highlightQuotes = true }: { value: unknown; highlightQuotes?: boolean }) {
@@ -31,13 +32,32 @@ export function RichText({ value, highlightQuotes = true }: { value: unknown; hi
       }
       const children = renderNodes(node.children, key)
       if (node.type === 'heading') return Number(String(node.tag).replace('h', '')) === 3 ? <h3 key={key}>{children}</h3> : <h2 key={key}>{children}</h2>
-      if (node.type === 'list') return node.listType === 'number' ? <ol key={key}>{children}</ol> : <ul key={key}>{children}</ul>
-      if (node.type === 'listitem') return <li key={key}>{children}</li>
+      if (node.type === 'list') {
+        const isNumbered = node.listType === 'number' || node.tag === 'ol'
+        const start = typeof node.start === 'number' ? node.start : undefined
+        return isNumbered ? <ol key={key} start={start}>{children}</ol> : <ul key={key}>{children}</ul>
+      }
+      if (node.type === 'listitem') {
+        const value = typeof node.value === 'number' ? node.value : undefined
+        return <li key={key} value={value}>{children}</li>
+      }
       if (node.type === 'quote') return highlightQuotes ? <blockquote key={key}>{children}</blockquote> : <p className="plain-quote" key={key}>{children}</p>
-      if (node.type === 'link' || node.type === 'autolink') return <a key={key} href={String(node.fields && typeof node.fields === 'object' ? (node.fields as Record<string, unknown>).url || '#' : '#')}>{children}</a>
+      if (node.type === 'link' || node.type === 'autolink') {
+        const fields = node.fields && typeof node.fields === 'object' ? (node.fields as Record<string, unknown>) : null
+        const href = String(fields?.url || (node as Record<string, unknown>).url || '#')
+        const target = fields?.newTab ? '_blank' : undefined
+        const rel = fields?.newTab ? 'noopener noreferrer' : undefined
+        return <a key={key} href={href} target={target} rel={rel}>{children}</a>
+      }
       if (node.type === 'table') return <div className="rich-table-wrap" key={key}><table><tbody>{children}</tbody></table></div>
       if (node.type === 'tablerow') return <tr key={key}>{children}</tr>
-      if (node.type === 'tablecell') return Number(node.headerState) ? <th key={key}>{children}</th> : <td key={key}>{children}</td>
+      if (node.type === 'tablecell') {
+        const isHeader = Boolean(Number(node.headerState) || node.headerState === 'row' || node.headerState === 'column' || node.headerState === 'both')
+        const colSpan = typeof node.colSpan === 'number' && node.colSpan > 1 ? node.colSpan : undefined
+        const rowSpan = typeof node.rowSpan === 'number' && node.rowSpan > 1 ? node.rowSpan : undefined
+        return isHeader ? <th key={key} colSpan={colSpan} rowSpan={rowSpan}>{children}</th> : <td key={key} colSpan={colSpan} rowSpan={rowSpan}>{children}</td>
+      }
+      if (node.type === 'horizontalrule') return <hr key={key} />
       if (node.type === 'linebreak') return <br key={key} />
       return <p key={key}>{children}</p>
     }).filter((node) => node !== null)

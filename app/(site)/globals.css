@@ -185,6 +185,221 @@ main>section+section{margin-top:clamp(28px,3.5vw,44px)}
 @media(max-width:650px){.home-process .process-grid{row-gap:14px}.home-process .process-card,.home-process .process-card:first-child{padding:22px;border-bottom:1px solid #dce4f1}.home-process .process-card:last-child{border-bottom:1px solid #dce4f1}}
 .form-panel:before{left:50%;width:120px;transform:translateX(-50%)}
 
-.service-card-summary{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}.detail-rich-second{margin-top:42px;padding-top:30px;border-top:1px solid #e7edf6}.detail-rich blockquote{margin:30px 0;padding:22px 28px;background:#eef5ff;border-left:3px solid #245ce3;border-radius:0 10px 10px 0;color:#18345f;font-size:clamp(18px,2vw,24px);line-height:1.55;letter-spacing:-.025em}.detail-rich blockquote p{margin:0;color:inherit}.detail-rich .rich-table-wrap{overflow-x:auto;margin:25px 0}.detail-rich table{width:100%;border-collapse:collapse;font-size:13px}.detail-rich th,.detail-rich td{padding:12px 14px;border:1px solid #dce5f2;text-align:left}.detail-rich th{background:#edf4ff;color:#203b68}
+.service-card-summary{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.detail-rich-second{margin-top:42px;padding-top:30px;border-top:1px solid #e7edf6}
+
+/* Shared rich text typography and components for service details, blog details, and CMS articles */
+.detail-rich blockquote,
+.article-content blockquote,
+.rich-text blockquote {
+  margin: 32px 0;
+  padding: 22px 28px;
+  background: #eef5ff;
+  border-left: 3px solid #245ce3;
+  border-radius: 0 10px 10px 0;
+  color: #18345f;
+  font-size: clamp(18px, 2vw, 24px);
+  line-height: 1.55;
+  letter-spacing: -0.025em;
+  font-weight: 500;
+}
+.detail-rich blockquote p,
+.article-content blockquote p,
+.rich-text blockquote p {
+  margin: 0;
+  color: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
+.detail-rich blockquote p + p,
+.article-content blockquote p + p,
+.rich-text blockquote p + p {
+  margin-top: 12px;
+}
+.detail-rich .plain-quote,
+.article-content .plain-quote,
+.rich-text .plain-quote {
+  font-style: italic;
+  color: #2b3d5b;
+  border-left: 3px solid #94b2e8;
+  padding: 8px 0 8px 18px;
+  margin: 24px 0;
+}
+
+/* Tables */
+.detail-rich .rich-table-wrap,
+.article-content .rich-table-wrap,
+.rich-text .rich-table-wrap {
+  overflow-x: auto;
+  margin: 28px 0;
+  border-radius: 6px;
+  border: 1px solid #dce5f2;
+}
+.detail-rich table,
+.article-content table,
+.rich-text table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+.detail-rich th,
+.detail-rich td,
+.article-content th,
+.article-content td,
+.rich-text th,
+.rich-text td {
+  padding: 12px 16px;
+  border: 1px solid #dce5f2;
+  text-align: left;
+}
+.detail-rich th,
+.article-content th,
+.rich-text th {
+  background: #edf4ff;
+  color: #203b68;
+  font-weight: 650;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+}
+.detail-rich td,
+.article-content td,
+.rich-text td {
+  background: #fff;
+  color: #33445c;
+}
+.detail-rich tr:nth-child(even) td,
+.article-content tr:nth-child(even) td,
+.rich-text tr:nth-child(even) td {
+  background: #fbfdff;
+}
+.detail-rich th p,
+.detail-rich td p,
+.article-content th p,
+.article-content td p,
+.rich-text th p,
+.rich-text td p {
+  margin: 0;
+  padding: 0;
+}
+
+/* Unordered lists (bullets) */
+.detail-rich ul,
+.article-content ul,
+.rich-text ul {
+  list-style: disc outside;
+  margin: 20px 0 26px;
+  padding-left: 28px;
+}
+.detail-rich ul li,
+.article-content ul li,
+.rich-text ul li {
+  list-style: disc outside;
+  margin-bottom: 9px;
+  line-height: 1.85;
+  color: inherit;
+}
+.detail-rich ul li::marker,
+.article-content ul li::marker,
+.rich-text ul li::marker {
+  color: #245ce3;
+  font-size: 1.05em;
+}
+.detail-rich ul ul,
+.article-content ul ul,
+.rich-text ul ul {
+  list-style-type: circle;
+  margin: 6px 0 8px;
+  padding-left: 20px;
+}
+
+/* Ordered lists (numbering) */
+.detail-rich ol,
+.article-content ol,
+.rich-text ol {
+  list-style: decimal outside;
+  margin: 20px 0 26px;
+  padding-left: 28px;
+}
+.detail-rich ol li,
+.article-content ol li,
+.rich-text ol li {
+  list-style: decimal outside;
+  margin-bottom: 9px;
+  line-height: 1.85;
+  color: inherit;
+}
+.detail-rich ol li::marker,
+.article-content ol li::marker,
+.rich-text ol li::marker {
+  color: #245ce3;
+  font-weight: 650;
+}
+.detail-rich ol ol,
+.article-content ol ol,
+.rich-text ol ol {
+  list-style-type: lower-alpha;
+  margin: 6px 0 8px;
+  padding-left: 20px;
+}
+.detail-rich li > p,
+.article-content li > p,
+.rich-text li > p {
+  margin: 0;
+  display: inline;
+}
+.detail-rich li > p + p,
+.article-content li > p + p,
+.rich-text li > p + p {
+  margin-top: 6px;
+  display: block;
+}
+
+/* Headings and in-text styling in rich text */
+.article-content .rich-text h2,
+.detail-rich .rich-text h2 {
+  font-size: clamp(23px, 2.8vw, 32px);
+  line-height: 1.25;
+  letter-spacing: -0.04em;
+  font-weight: 700;
+  color: #12203a;
+  margin: 38px 0 16px;
+}
+.article-content .rich-text h3,
+.detail-rich .rich-text h3 {
+  font-size: clamp(18px, 2.2vw, 24px);
+  line-height: 1.35;
+  letter-spacing: -0.03em;
+  font-weight: 650;
+  color: #12203a;
+  margin: 28px 0 12px;
+}
+.article-content .rich-text a,
+.detail-rich .rich-text a {
+  color: #245ce3;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+.article-content .rich-text a:hover,
+.detail-rich .rich-text a:hover {
+  color: #163d9f;
+}
+.article-content .rich-text code,
+.detail-rich .rich-text code {
+  font-family: monospace;
+  font-size: 0.9em;
+  background: #edf2f9;
+  color: #1a3666;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.article-content .rich-text hr,
+.detail-rich .rich-text hr {
+  border: 0;
+  border-top: 1px solid #e2e8f0;
+  margin: 38px 0;
+}
 
 .home-service-content>span{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
