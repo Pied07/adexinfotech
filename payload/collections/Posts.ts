@@ -18,3 +18,4 @@ export const Posts: CollectionConfig = {
     { name: 'seoDescription', type: 'textarea' },
   ],
 }
+
