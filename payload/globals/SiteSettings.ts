@@ -7,6 +7,7 @@ export const SiteSettings: GlobalConfig = {
     { name: 'businessName', type: 'text', required: true, defaultValue: 'Adex Infotech' },
     { name: 'tagline', type: 'text', defaultValue: 'Ideas into impact.' },
     { name: 'logo', type: 'upload', relationTo: 'media' },
+    { name: 'logoIcon', type: 'upload', relationTo: 'media', admin: { description: 'Square or compact logo used for the browser tab icon. Falls back to Logo when empty.' } },
     { name: 'heroTitle', type: 'text', defaultValue: 'Make your next move your best one.' },
     { name: 'heroAccent', type: 'text', defaultValue: 'Build what’s next.' },
     { name: 'heroDescription', type: 'textarea', defaultValue: 'We bring strategy, design and technology together to help ambitious brands move forward.' },

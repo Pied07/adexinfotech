@@ -622,6 +622,10 @@ export interface SiteSetting {
   businessName: string;
   tagline?: string | null;
   logo?: (number | null) | Media;
+  /**
+   * Square or compact logo used for the browser tab icon. Falls back to Logo when empty.
+   */
+  logoIcon?: (number | null) | Media;
   heroTitle?: string | null;
   heroAccent?: string | null;
   heroDescription?: string | null;
@@ -702,6 +706,7 @@ export interface SiteSettingsSelect<T extends boolean = true> {
   businessName?: T;
   tagline?: T;
   logo?: T;
+  logoIcon?: T;
   heroTitle?: T;
   heroAccent?: T;
   heroDescription?: T;

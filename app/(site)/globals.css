@@ -147,6 +147,11 @@ main>section+section{margin-top:clamp(28px,3.5vw,44px)}
 .home-services+.studio-section{margin-top:0}
 .studio-section+.home-process{margin-top:0}
 .home-process+.home-note{margin-top:0}
+.home-process .process-grid{gap:18px;border:0}
+.home-process .process-card,.home-process .process-card:first-child{padding:26px 22px;border:1px solid #dce4f1;border-radius:12px;background:#fff;box-shadow:0 10px 28px #172f5912}
+.home-process .process-card:hover{background:#fff;box-shadow:0 16px 34px #172f5920;transform:translateY(-3px)}
+.home-process .process-rule{left:22px;right:22px;border-radius:2px}
+@media(max-width:650px){.home-process .process-grid{gap:14px}.home-process .process-card,.home-process .process-card:first-child{padding:22px;border-bottom:1px solid #dce4f1}.home-process .process-card:last-child{border-bottom:1px solid #dce4f1}}
 @media(max-width:900px){.page-intro-inner{width:calc(100% - 48px)}}
 @media(max-width:650px){.page-intro-inner{width:calc(100% - 36px);padding-block:54px 40px}.page-intro-inner:after{margin-top:22px}main>section+section{margin-top:24px}.page-intro+article{margin-top:24px}.about-feature{padding-top:28px}}
 
@@ -171,3 +176,11 @@ main>section+section{margin-top:clamp(28px,3.5vw,44px)}
 .nav-cta svg,.footer-top a svg{width:14px;height:14px;flex:none}
 
 @media(max-width:650px){.motion-ready .scroll-reveal-root [data-reveal],.motion-ready .scroll-reveal-root main>section:not(.home-hero){opacity:1!important;transform:none!important;transition:none!important}}
+
+/* Separate the process tiles clearly against the soft section background. */
+.home-process .process-grid{column-gap:18px;row-gap:18px;border:0}
+.home-process .process-card,.home-process .process-card:first-child{padding:26px 22px;border:1px solid #dce4f1;border-radius:12px;background:#fff;box-shadow:0 10px 28px #172f5912}
+.home-process .process-card:hover{background:#fff;box-shadow:0 16px 34px #172f5920;transform:translateY(-3px)}
+.home-process .process-rule{left:22px;right:22px;border-radius:2px}
+@media(max-width:650px){.home-process .process-grid{row-gap:14px}.home-process .process-card,.home-process .process-card:first-child{padding:22px;border-bottom:1px solid #dce4f1}.home-process .process-card:last-child{border-bottom:1px solid #dce4f1}}
+.form-panel:before{left:50%;width:120px;transform:translateX(-50%)}
