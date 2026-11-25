@@ -4,6 +4,13 @@ import { useState, useEffect, useRef } from 'react'
 import { usePathname } from 'next/navigation'
 import * as THREE from 'three'
 import { Rocket, Volume2, VolumeX, FastForward, CheckCircle2, ChevronRight, Compass } from 'lucide-react'
+import {
+  createRealisticMarsMaps,
+  createMartianCloudTexture,
+  createRealisticMoonMaps,
+  atmosphereVertexShader,
+  atmosphereFragmentShader,
+} from '@/lib/mars3d'
 
 export type FlightStage =
   | 'earth_pad'       // Realistic daytime launch facility: real photographic mountains, pine forest, concrete complex
@@ -1422,15 +1429,16 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
     scene.add(starPoints)
 
     // =======================================================================
-    // 4. 3D MOON (Scaled & Framed Beautifully in Line of Sight of Window)
+    // 4. 3D MOON (Seamless 3D Spherical Cratered Lunar Surface)
     // =======================================================================
+    const lunarMaps = createRealisticMoonMaps('lunar')
     const moonGeo = new THREE.SphereGeometry(8.5, 64, 64)
     const moonMat = new THREE.MeshStandardMaterial({
-      map: createMoonTexture(),
-      bumpMap: createMoonBumpTexture(),
-      bumpScale: 0.65,
-      roughness: 0.88,
-      metalness: 0.05,
+      map: lunarMaps.map,
+      bumpMap: lunarMaps.bumpMap,
+      bumpScale: 0.48,
+      roughness: 0.9,
+      metalness: 0.04,
     })
     const moonMesh = new THREE.Mesh(moonGeo, moonMat)
     moonMesh.position.set(0, 0, -34)
@@ -1438,26 +1446,94 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
     scene.add(moonMesh)
 
     // =======================================================================
-    // 5. 3D MARS (Photorealistic NASA Geological Features & Canyon Relief)
+    // 5. 3D MARS & ORBITING MOONS (Hyper-Realistic Seamless 3D Geology)
     // =======================================================================
-    const marsGeo = new THREE.SphereGeometry(28, 64, 64)
+    const marsMaps = createRealisticMarsMaps()
+    const marsGeo = new THREE.SphereGeometry(28, 72, 72)
     const marsMat = new THREE.MeshStandardMaterial({
-      map: createMarsTexture(),
-      bumpMap: createMarsBumpTexture(),
-      bumpScale: 0.12,
-      roughness: 0.78,
-      metalness: 0.08,
+      map: marsMaps.map,
+      bumpMap: marsMaps.bumpMap,
+      bumpScale: 0.35,
+      roughnessMap: marsMaps.roughnessMap,
+      roughness: 0.88,
+      metalness: 0.04,
     })
     const marsMesh = new THREE.Mesh(marsGeo, marsMat)
     marsMesh.position.set(0, 0, -340)
     marsMesh.visible = false
     scene.add(marsMesh)
 
+    const marsCloudTex = createMartianCloudTexture()
+    const marsCloudMesh = new THREE.Mesh(
+      new THREE.SphereGeometry(28.35, 56, 56),
+      new THREE.MeshStandardMaterial({
+        map: marsCloudTex,
+        transparent: true,
+        opacity: 0.62,
+        depthWrite: false,
+        roughness: 1,
+      })
+    )
+    marsMesh.add(marsCloudMesh)
+
+    const marsCyanDir = new THREE.Vector3(0.8, 0.5, 0.35).normalize()
+    const marsOrangeDir = new THREE.Vector3(-0.7, -0.6, 0.35).normalize()
+    const marsSunDir = new THREE.Vector3(-1.35, 0.55, 0.95).normalize()
+
     const marsAtmosphere = new THREE.Mesh(
-      new THREE.SphereGeometry(28.8, 48, 48),
-      new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.22, side: THREE.BackSide })
+      new THREE.SphereGeometry(29.7, 64, 64),
+      new THREE.ShaderMaterial({
+        vertexShader: atmosphereVertexShader,
+        fragmentShader: atmosphereFragmentShader,
+        uniforms: {
+          uSunDir: { value: marsSunDir },
+          uCyanMoonDir: { value: marsCyanDir },
+          uOrangeMoonDir: { value: marsOrangeDir },
+        },
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        side: THREE.FrontSide,
+        depthWrite: false,
+      })
     )
     marsMesh.add(marsAtmosphere)
+
+    // Orbiting Realistic Martian Moons: Phobos (cyan-tinted) & Deimos (orange-tinted)
+    const phobosMaps = createRealisticMoonMaps('phobos')
+    const phobosMesh = new THREE.Mesh(
+      new THREE.SphereGeometry(2.6, 40, 40),
+      new THREE.MeshStandardMaterial({
+        map: phobosMaps.map,
+        bumpMap: phobosMaps.bumpMap,
+        bumpScale: 0.25,
+        roughness: 0.88,
+        emissive: new THREE.Color(0x0b3a4a),
+        emissiveIntensity: 0.35,
+      })
+    )
+    phobosMesh.scale.set(1.18, 0.92, 1.0)
+    marsMesh.add(phobosMesh)
+
+    const phobosGlowLight = new THREE.PointLight(0x22d3ee, 45, 95, 1.4)
+    marsMesh.add(phobosGlowLight)
+
+    const deimosMaps = createRealisticMoonMaps('deimos')
+    const deimosMesh = new THREE.Mesh(
+      new THREE.SphereGeometry(1.9, 36, 36),
+      new THREE.MeshStandardMaterial({
+        map: deimosMaps.map,
+        bumpMap: deimosMaps.bumpMap,
+        bumpScale: 0.2,
+        roughness: 0.88,
+        emissive: new THREE.Color(0x4a190a),
+        emissiveIntensity: 0.35,
+      })
+    )
+    deimosMesh.scale.set(1.12, 0.95, 1.0)
+    marsMesh.add(deimosMesh)
+
+    const deimosGlowLight = new THREE.PointLight(0xff5a2c, 45, 95, 1.4)
+    marsMesh.add(deimosGlowLight)
 
     // =======================================================================
     // 6. REALISTIC 3D MARS CANYON ENVIRONMENT (Pad at Ground Level)
@@ -1601,7 +1677,22 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
       const pitch = THREE.MathUtils.clamp(lookState.pitch, -0.55, 0.65)
 
       moonMesh.rotation.y += 0.003
-      marsMesh.rotation.y += 0.002
+      marsMesh.rotation.y += 0.0022
+      marsMesh.rotation.z += 0.0007
+      marsCloudMesh.rotation.y += 0.0008
+
+      // Orbit Phobos (cyan) & Deimos (orange) around approaching Mars & cast colored shadow-limb glow
+      const pAng = time * 0.48
+      phobosMesh.position.set(Math.sin(pAng) * 41, Math.cos(pAng) * 26, Math.cos(pAng * 0.6) * 24)
+      phobosMesh.rotation.y += 0.008
+      phobosGlowLight.position.copy(phobosMesh.position)
+      marsCyanDir.copy(phobosMesh.position).normalize()
+
+      const dAng = -time * 0.34 + 2.1
+      deimosMesh.position.set(Math.sin(dAng) * 48, Math.cos(dAng) * 32, Math.sin(dAng * 0.7) * 22)
+      deimosMesh.rotation.y += 0.006
+      deimosGlowLight.position.copy(deimosMesh.position)
+      marsOrangeDir.copy(deimosMesh.position).normalize()
 
       if (curStage === 'earth_pad') {
         // DAYTIME EARTH LAUNCHPAD - Interactive 360 Mouse/Touch Look-Around!

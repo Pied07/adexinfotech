@@ -3,6 +3,7 @@ import { ArrowDown, ArrowUpRight, Compass, Shield, Zap, Sparkles, Terminal, Acti
 import { CTA } from '@/components/Blocks'
 import { HomeServicesCarousel } from '@/components/HomeServicesCarousel'
 import { AnimatedCounter } from '@/components/AnimatedCounter'
+import { HeroMarsGlobe } from '@/components/HeroMarsGlobe'
 import { getServices, getSettings, mediaURL } from '@/lib/cms'
 import { serviceSlug, starterServices } from '@/lib/starter-services'
 
@@ -18,6 +19,7 @@ export default async function Home() {
   const name = settings?.businessName || process.env.NEXT_PUBLIC_BUSINESS_NAME || 'MARSMENT'
   const heroImage = mediaURL(settings?.heroImage) || process.env.NEXT_PUBLIC_HERO_IMAGE_URL
   const aboutImage = mediaURL(settings?.aboutImage) || process.env.NEXT_PUBLIC_ABOUT_IMAGE_URL
+  const logo = mediaURL(settings?.logo)
 
   return (
     <main className="home-mars-page">
@@ -71,7 +73,7 @@ export default async function Home() {
             <div className="mars-planet-orb-wrap">
               <div className="mars-orb-atmosphere" />
               <div className="mars-orb-core">
-                <img src="/marsment-logo.jpg" alt="MARSMENT Planetary Emblem" className="mars-orb-img" />
+                <HeroMarsGlobe />
               </div>
 
               {/* Orbital Ring Data Overlay (Phobos on outer orbit, Deimos on inner orbit) */}
