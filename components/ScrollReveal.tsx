@@ -23,8 +23,15 @@ export function ScrollReveal({ children }: { children: React.ReactNode }) {
         entry.target.classList.add('is-visible')
         observer.unobserve(entry.target)
       })
-    }, { threshold: 0.12, rootMargin: '0px 0px -48px 0px' })
-    elements.forEach((element) => observer.observe(element))
+    }, { threshold: 0.01, rootMargin: '120px 0px 120px 0px' })
+    elements.forEach((element) => {
+      const rect = element.getBoundingClientRect()
+      if (rect.top < window.innerHeight + 120) {
+        element.classList.add('is-visible')
+      } else {
+        observer.observe(element)
+      }
+    })
 
     // The site shell persists across App Router navigation. Observe newly
     // rendered route content too, or its reveal styles can leave it invisible.

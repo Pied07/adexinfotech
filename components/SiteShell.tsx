@@ -1,23 +1,192 @@
-﻿import Link from 'next/link'
+import Link from 'next/link'
 import type { ReactNode } from 'react'
-import { ArrowUpRight, MessageCircle } from 'lucide-react'
+import { ArrowUpRight, MessageCircle, Sparkles, Mail, Phone, MapPin } from 'lucide-react'
 import { getSettings, mediaURL } from '@/lib/cms'
 import { ScrollReveal } from '@/components/ScrollReveal'
 import { MobileNav } from '@/components/MobileNav'
+import { PageTransition } from '@/components/PageTransition'
+import { ReplayMissionButton } from '@/components/ReplayMissionButton'
+import { RocketLaunchExperience } from '@/components/RocketLaunchExperience'
+import { FloatingWhatsApp } from '@/components/FloatingWhatsApp'
 
 export async function SiteShell({ children }: { children: ReactNode }) {
   const settings = await getSettings()
-  const name = settings?.businessName || process.env.NEXT_PUBLIC_BUSINESS_NAME || 'Adex Infotech'
-  const tagline = settings?.tagline || process.env.NEXT_PUBLIC_TAGLINE || 'Ideas into impact.'
-  const logo = mediaURL(settings?.logo)
+  const name = settings?.businessName || process.env.NEXT_PUBLIC_BUSINESS_NAME || 'MARSMENT'
+  const tagline = settings?.tagline || process.env.NEXT_PUBLIC_TAGLINE || 'Web • Development • Marketing'
+  const logo = mediaURL(settings?.logo) || '/marsment-logo.jpg'
+  const email = settings?.email || 'info@marsment.com'
+  const phone = settings?.phone
+  const address = settings?.address
   const whatsapp = settings?.whatsappNumber || process.env.NEXT_PUBLIC_WHATSAPP_NUMBER
-  return <>
-    <div className="topline"><div className="container topline-inner"><span>{settings?.footerNote || tagline}</span><div>{settings?.phone && <a href={`tel:${settings.phone}`}>{settings.phone}</a>}{settings?.email && <a href={`mailto:${settings.email}`}>{settings.email}</a>}</div></div></div>
-    <header className="site-header"><div className="container nav-wrap"><Link href="/" className="brand" aria-label={name}>{logo ? <img src={logo} alt={name} className="brand-logo"/> : <span className="brand-mark">A<span>.</span></span>}<span className="brand-copy"><strong>{name}</strong><small>{tagline}</small></span></Link><nav className="main-nav"><Link href="/services">Services</Link><Link href="/about">About</Link><Link href="/blog">Insights</Link><Link href="/contact">Contact</Link></nav><Link className="button button-blue nav-cta" href="/contact">Let's talk <ArrowUpRight aria-hidden="true" /></Link><MobileNav /></div></header>
-    <ScrollReveal>{children}</ScrollReveal>
-    <footer className="site-footer"><div className="container footer-top"><div><Link href="/" className="brand footer-brand">{logo?<img src={logo} alt={name} className="brand-logo"/>:<span className="brand-mark">A<span>.</span></span>}<span className="brand-copy"><strong>{name}</strong><small>{tagline}</small></span></Link><p>Creative thinking. Thoughtful technology.<br/>A clearer way forward.</p></div><div><h4>Explore</h4><Link href="/services">Our services</Link><Link href="/about">About us</Link><Link href="/blog">Ideas & insights</Link></div><div><h4>Get in touch</h4>{settings?.email && <a href={`mailto:${settings.email}`}>{settings.email}</a>}{settings?.phone && <a href={`tel:${settings.phone}`}>{settings.phone}</a>}{settings?.address && <p>{settings.address}</p>}<Link href="/contact">Request a consultation <ArrowUpRight aria-hidden="true" /></Link></div></div><div className="container footer-bottom"><span>© {new Date().getFullYear()} {name}. {settings?.footerNote || 'All rights reserved.'}</span><div><Link href="/privacy-policy">Privacy</Link><Link href="/terms">Terms</Link></div></div></footer>
-    {whatsapp && <a className="whatsapp" href={`https://wa.me/${whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" aria-label="Enquire on WhatsApp"><MessageCircle aria-hidden="true" /><b>WhatsApp us</b></a>}
-  </>
+
+  return (
+    <div className="mars-theme-root">
+      {/* Full-Screen Interactive Rocket Launch Experience */}
+      <RocketLaunchExperience />
+
+      {/* Space Topline */}
+      <div className="topline">
+        <div className="container topline-inner">
+          <div className="topline-left">
+            <span className="topline-tag">
+              <span className="pulse-dot" />
+              MISSION CONTROL
+            </span>
+            <span className="topline-note">{settings?.footerNote || 'EXPEDITION TO THE EXTRAORDINARY'}</span>
+          </div>
+          <div className="topline-right">
+            <ReplayMissionButton />
+            {phone && (
+              <a href={`tel:${phone}`} className="topline-contact-link">
+                <Phone size={12} />
+                <span>{phone}</span>
+              </a>
+            )}
+            <a href={`mailto:${email}`} className="topline-contact-link">
+              <Mail size={12} />
+              <span>{email}</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      {/* Futuristic Main Header */}
+      <header className="site-header">
+        <div className="container nav-wrap">
+          <Link href="/" className="brand" aria-label={name}>
+            <div className="brand-logo-frame">
+              <img src={logo} alt={name} className="brand-logo-img" />
+            </div>
+            <div className="brand-copy">
+              <strong className="brand-title">
+                <span className="brand-part-mars">MARS</span>
+                <span className="brand-part-ment">MENT</span>
+              </strong>
+              <small className="brand-sub">WEB • DEVELOPMENT • MARKETING</small>
+            </div>
+          </Link>
+
+          <nav className="main-nav" aria-label="Main Navigation">
+            <Link href="/" className="nav-item">
+              <span>Home</span>
+            </Link>
+            <Link href="/services" className="nav-item">
+              <span>Services</span>
+            </Link>
+            <Link href="/about" className="nav-item">
+              <span>About</span>
+            </Link>
+            <Link href="/blog" className="nav-item">
+              <span>Insights</span>
+            </Link>
+            <Link href="/contact" className="nav-item">
+              <span>Contact</span>
+            </Link>
+          </nav>
+
+          <div className="nav-actions">
+            <Link className="button button-mars-quote nav-cta" href="/contact">
+              <span>Get a Quote</span>
+              <ArrowUpRight size={15} aria-hidden="true" />
+            </Link>
+            <MobileNav />
+          </div>
+        </div>
+      </header>
+
+      {/* Smooth Page Transition & Scroll Reveal */}
+      <PageTransition>
+        <ScrollReveal>
+          {children}
+        </ScrollReveal>
+      </PageTransition>
+
+      {/* Redesigned Futuristic Site Footer */}
+      <footer className="site-footer">
+        <div className="footer-ambient-glow" />
+        <div className="container footer-top">
+          <div className="footer-brand-col">
+            <Link href="/" className="brand footer-brand">
+              <div className="brand-logo-frame">
+                <img src={logo} alt={name} className="brand-logo-img" />
+              </div>
+              <div className="brand-copy">
+                <strong className="brand-title">
+                  <span className="brand-part-mars">MARS</span>
+                  <span className="brand-part-ment">MENT</span>
+                </strong>
+                <small className="brand-sub">WEB • DEVELOPMENT • MARKETING</small>
+              </div>
+            </Link>
+            <p className="footer-mission-statement">
+              Deep-space precision engineering for modern brands. We forge web solutions, custom digital architectures, and aggressive growth marketing that propel businesses beyond conventional boundaries.
+            </p>
+            <div className="footer-mars-badge">
+              <span className="badge-orbit" />
+              <span>STATION: MARS HEADQUARTERS</span>
+            </div>
+          </div>
+
+          <div className="footer-links-col">
+            <h4>Capabilities</h4>
+            <Link href="/services/website-development">Website Development</Link>
+            <Link href="/services/saas">SaaS Systems</Link>
+            <Link href="/services/ai-ml">AI & Machine Learning</Link>
+            <Link href="/services/digital-marketing">Digital Marketing</Link>
+            <Link href="/services/seo-and-geo">SEO & GEO Optimization</Link>
+            <Link href="/services">View All 15 Services →</Link>
+          </div>
+
+          <div className="footer-links-col">
+            <h4>Company</h4>
+            <Link href="/about">About MARSMENT</Link>
+            <Link href="/blog">Transmission Insights</Link>
+            <Link href="/contact">Contact Mission Control</Link>
+            <Link href="/privacy-policy">Privacy Policy</Link>
+            <Link href="/terms">Terms & Conditions</Link>
+          </div>
+
+          <div className="footer-contact-col">
+            <h4>Direct Channel</h4>
+            <a href={`mailto:${email}`} className="footer-contact-row">
+              <Mail size={15} className="text-cyan" />
+              <span>{email}</span>
+            </a>
+            {phone && (
+              <a href={`tel:${phone}`} className="footer-contact-row">
+                <Phone size={15} className="text-cyan" />
+                <span>{phone}</span>
+              </a>
+            )}
+            {address && (
+              <div className="footer-contact-row">
+                <MapPin size={15} className="text-cyan" />
+                <span>{address}</span>
+              </div>
+            )}
+            <Link href="/contact" className="button button-mars-quote footer-cta">
+              <span>Initiate Project</span>
+              <ArrowUpRight size={14} aria-hidden="true" />
+            </Link>
+          </div>
+        </div>
+
+        <div className="container footer-bottom">
+          <div className="footer-copyright">
+            <span>© {new Date().getFullYear()} {name}. {settings?.footerNote || 'All systems operational.'}</span>
+            <span className="footer-divider">•</span>
+            <span>Email: <a href={`mailto:${email}`} className="text-cyan">{email}</a></span>
+          </div>
+          <div className="footer-legal-links">
+            <Link href="/privacy-policy">Privacy</Link>
+            <Link href="/terms">Terms</Link>
+            <Link href="/contact">Support</Link>
+          </div>
+        </div>
+      </footer>
+
+      {/* Floating Draggable WhatsApp Contact */}
+      {whatsapp && <FloatingWhatsApp phone={whatsapp} />}
+    </div>
+  )
 }
-
-

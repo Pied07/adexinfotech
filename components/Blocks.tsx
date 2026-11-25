@@ -1,8 +1,51 @@
 import Link from 'next/link'
 import type { ReactNode } from 'react'
+import { ArrowUpRight, Sparkles, Rocket } from 'lucide-react'
 
-export function PageIntro({ eyebrow, title, text }: { eyebrow: string; title: ReactNode; text?: string }) { return <section className="page-intro"><div className="container page-intro-inner"><p className="eyebrow"><i/> {eyebrow}</p><h1>{title}</h1>{text&&<p className="lead">{text}</p>}</div></section> }
-export function CTA() { return <section className="cta-section"><div className="container cta-inner"><div><p className="eyebrow eyebrow-light"><i/> YOUR NEXT CHAPTER</p><h2>Good things start<br/>with a conversation.</h2></div><Link href="/contact" className="button button-white">Tell us what you’re building <span>↗</span></Link></div></section> }
+export function PageIntro({ eyebrow, title, text }: { eyebrow: string; title: ReactNode; text?: string }) {
+  return (
+    <section className="page-intro">
+      <div className="container page-intro-inner">
+        <div className="page-intro-badge">
+          <span className="badge-core-dot" />
+          <span className="badge-eyebrow-text">{eyebrow}</span>
+        </div>
+        <h1 className="page-intro-title">{title}</h1>
+        {text && <p className="lead page-intro-lead">{text}</p>}
+      </div>
+    </section>
+  )
+}
+
+export function CTA() {
+  return (
+    <section className="cta-section">
+      <div className="cta-ambient-mesh" />
+      <div className="container cta-inner">
+        <div className="cta-copy">
+          <div className="cta-eyebrow">
+            <Rocket size={14} className="text-cyan" />
+            <span>EXPEDITION READY</span>
+          </div>
+          <h2>Ready to Launch<br /><span className="text-gradient-mars">Your Next Breakthrough?</span></h2>
+          <p className="cta-sub">
+            Whether you need a world-class web platform, custom software architecture, or aggressive digital growth marketing, our team is primed for departure.
+          </p>
+        </div>
+        <div className="cta-actions">
+          <Link href="/contact" className="button button-mars-quote cta-btn">
+            <span>Get a Quote</span>
+            <ArrowUpRight size={17} aria-hidden="true" />
+          </Link>
+          <Link href="/services" className="button button-glass-cyan cta-btn-secondary">
+            <span>Explore Capabilities</span>
+          </Link>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 export function richTextHasContent(value: unknown): boolean {
   if (!value || typeof value !== 'object') return false
   if (Array.isArray(value)) return value.some(richTextHasContent)
@@ -11,9 +54,10 @@ export function richTextHasContent(value: unknown): boolean {
   if (node.type === 'table' || node.type === 'quote' || node.type === 'list' || node.type === 'upload') return true
   return Object.values(node).some(richTextHasContent)
 }
+
 export function RichText({ value, highlightQuotes = true }: { value: unknown; highlightQuotes?: boolean }) {
   if (!value || typeof value !== 'object') return null
-  const root=(value as {root?:{children?:Array<Record<string,unknown>>}}).root
+  const root = (value as { root?: { children?: Array<Record<string, unknown>> } }).root
   const renderNodes = (nodes: unknown, keyPrefix: string): ReactNode[] => {
     if (!Array.isArray(nodes)) return []
     return nodes.map((raw, index) => {

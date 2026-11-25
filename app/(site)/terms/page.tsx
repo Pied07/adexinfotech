@@ -1,4 +1,42 @@
 import { getSettings } from '@/lib/cms'
 import { PageIntro, RichText } from '@/components/Blocks'
 
-export default async function TermsPage(){const s=await getSettings();return <main><PageIntro eyebrow="LEGAL" title="Terms & conditions" text="The terms that apply when you use this website."/><article className="legal-content container"><RichText value={s?.terms}/>{!s?.terms&&<><h2>Using this website</h2><p>This website provides general information about our business and services. By using it, you agree to use it lawfully and not to interfere with its operation.</p><h2>Intellectual property</h2><p>Website content, branding and materials are owned by or licensed to the business. Please request permission before reproducing them.</p><h2>Information and availability</h2><p>We make reasonable efforts to keep information current, but do not guarantee that all content is complete, accurate or available at all times. Service engagements are subject to separate written agreements.</p><h2>External links</h2><p>Links to third party websites are provided for convenience. We are not responsible for their content or privacy practices.</p><h2>Contact</h2><p>Questions about these terms can be sent using our contact page.</p></>}</article></main>}
+export default async function TermsPage() {
+  const s = await getSettings()
+  return (
+    <main className="legal-page">
+      <PageIntro
+        eyebrow="TERMS OF ENGAGEMENT • MARSMENT"
+        title="Terms & Conditions"
+        text="The operational framework governing your use of our platforms and digital services."
+      />
+      <article className="legal-content container">
+        <RichText value={s?.terms} />
+        {!s?.terms && (
+          <div className="legal-default-body">
+            <h2>Acceptance of Terms</h2>
+            <p>
+              By accessing and utilizing the MARSMENT website, you agree to comply with these terms, applicable laws, and relevant regulations. If you disagree with any part, please discontinue platform use.
+            </p>
+            <h2>Intellectual Property</h2>
+            <p>
+              All proprietary branding, technical codebases, design architectures, visuals, and copy on this site belong to MARSMENT or licensed partners. Unsanctioned duplication is prohibited.
+            </p>
+            <h2>Service Scopes & Deliverables</h2>
+            <p>
+              All custom web development, software engineering, and marketing agreements are governed by independent Statements of Work (SOWs) executed between MARSMENT and the client.
+            </p>
+            <h2>Limitation of Liability</h2>
+            <p>
+              MARSMENT makes reasonable efforts to maintain platform accuracy and uninterrupted availability. However, we do not warrant that all site materials are completely free of errors or disruptions.
+            </p>
+            <h2>Contact</h2>
+            <p>
+              Direct legal correspondence to <a href="mailto:info@marsment.com" className="text-cyan">info@marsment.com</a>.
+            </p>
+          </div>
+        )}
+      </article>
+    </main>
+  )
+}

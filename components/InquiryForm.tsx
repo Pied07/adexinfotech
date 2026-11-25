@@ -1,10 +1,11 @@
 'use client'
 
-import { ArrowUpRight, LoaderCircle } from 'lucide-react'
+import { ArrowUpRight, LoaderCircle, CheckCircle2, AlertCircle } from 'lucide-react'
 import { useRef, useState } from 'react'
 
 export function InquiryForm({ services = [] }: { services?: { title: string }[] }) {
   const [state, setState] = useState('')
+  const [isSuccess, setIsSuccess] = useState(false)
   const [busy, setBusy] = useState(false)
   const formRef = useRef<HTMLFormElement>(null)
   const inFlight = useRef(false)
@@ -14,31 +15,80 @@ export function InquiryForm({ services = [] }: { services?: { title: string }[] 
     inFlight.current = true
     setBusy(true)
     setState('')
+    setIsSuccess(false)
 
     try {
       const response = await fetch('/api/inquiries', { method: 'POST', body: formData })
-      if (!response.ok) throw new Error('Unable to send your enquiry right now.')
-      setState('Thanks for reaching out. Our team will be in touch shortly.')
+      if (!response.ok) throw new Error('Unable to send your inquiry right now.')
+      setState('Transmission received! Mission Control will contact you within 24 hours.')
+      setIsSuccess(true)
       formRef.current?.reset()
     } catch {
-      setState('We could not send that just now. Please try again or contact us by email.')
+      setState('Transmission failed to relay. Please retry or contact us directly at info@marsment.com')
+      setIsSuccess(false)
     } finally {
       inFlight.current = false
       setBusy(false)
     }
   }
 
-  return <form ref={formRef} id="inquiry-form" className="inquiry-form" action={submit} aria-busy={busy}>
-    <div className="form-grid">
-      <label>Your name<input name="name" required placeholder="Jane Smith" /></label>
-      <label>Email address<input type="email" name="email" required placeholder="jane@company.com" /></label>
-      <label>Phone number<input name="phone" placeholder="+1 555 000 0000" /></label>
-      <label>I'm interested in<select name="service" defaultValue=""><option value="">Choose a service</option>{services.map(({ title }) => <option key={title}>{title}</option>)}</select></label>
-      <label className="form-wide">Tell us about your project<textarea name="message" required rows={4} placeholder="A little about your goals, timeline or challenge..." /></label>
-    </div>
-    <button type="submit" disabled={busy} className="button button-blue">
-      {busy ? <><LoaderCircle className="inquiry-spinner" aria-hidden="true" /> Sending enquiry...</> : <>Send enquiry <ArrowUpRight aria-hidden="true" /></>}
-    </button>
-    {state && <p className="form-status" role="status" aria-live="polite">{state}</p>}
-  </form>
+  return (
+    <form ref={formRef} id="inquiry-form" className="inquiry-form" action={submit} aria-busy={busy}>
+      <div className="form-grid">
+        <label>
+          <span>Your Full Name</span>
+          <input name="name" required placeholder="Alex Mercer" />
+        </label>
+        <label>
+          <span>Email Address</span>
+          <input type="email" name="email" required placeholder="alex@company.com" />
+        </label>
+        <label>
+          <span>Contact Number</span>
+          <input name="phone" placeholder="+1 (555) 019-2834" />
+        </label>
+        <label>
+          <span>Target Capability</span>
+          <select name="service" defaultValue="">
+            <option value="">Select a capability</option>
+            {services.map(({ title }) => (
+              <option key={title} value={title}>
+                {title}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="form-wide">
+          <span>Project Brief & Objectives</span>
+          <textarea
+            name="message"
+            required
+            rows={4}
+            placeholder="Tell us about your brand ambition, system requirements, goals or timeline..."
+          />
+        </label>
+      </div>
+
+      <button type="submit" disabled={busy} className="button button-mars-quote form-submit-btn">
+        {busy ? (
+          <>
+            <LoaderCircle className="inquiry-spinner" aria-hidden="true" />
+            <span>Establishing Link...</span>
+          </>
+        ) : (
+          <>
+            <span>Get a Quote / Launch Project</span>
+            <ArrowUpRight size={17} aria-hidden="true" />
+          </>
+        )}
+      </button>
+
+      {state && (
+        <div className={`form-status ${isSuccess ? 'status-success' : 'status-error'}`} role="status" aria-live="polite">
+          {isSuccess ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+          <span>{state}</span>
+        </div>
+      )}
+    </form>
+  )
 }

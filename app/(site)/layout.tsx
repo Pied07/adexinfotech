@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic'
 
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getSettings()
-  const businessName = settings?.businessName || process.env.NEXT_PUBLIC_BUSINESS_NAME || 'Adex Infotech'
+  const businessName = settings?.businessName || process.env.NEXT_PUBLIC_BUSINESS_NAME || 'MARSMENT'
   return {
     metadataBase: new URL(process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000'),
     title: { default: settings?.seoTitle || businessName, template: `%s | ${businessName}` },

@@ -4,8 +4,8 @@ export const SiteSettings: GlobalConfig = {
   slug: 'site-settings',
   label: 'Site settings',
   fields: [
-    { name: 'businessName', type: 'text', required: true, defaultValue: 'Adex Infotech' },
-    { name: 'tagline', type: 'text', defaultValue: 'Ideas into impact.' },
+    { name: 'businessName', type: 'text', required: true, defaultValue: 'MARSMENT' },
+    { name: 'tagline', type: 'text', defaultValue: 'Web • Development • Marketing' },
     { name: 'logo', type: 'upload', relationTo: 'media' },
     { name: 'logoIcon', type: 'upload', relationTo: 'media', admin: { description: 'Square or compact logo used for the browser tab icon. Falls back to Logo when empty.' } },
     { name: 'heroTitle', type: 'text', defaultValue: 'Make your next move your best one.' },
