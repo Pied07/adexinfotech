@@ -537,6 +537,7 @@ button, input, textarea, select {
   inset: 0;
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   z-index: 9999999;
   background: #040711;
   overflow: hidden;
@@ -5119,7 +5120,7 @@ button, input, textarea, select {
     align-items: flex-start;
     gap: 12px;
   }
-  /* Rocket Launch Topbar: Single Row (Brand Left, Skip Center, Sound Icon Right) */
+  /* Rocket Launch Topbar: Brand Left (full text), Sound Icon Right, Skip Centered Below */
   .cinematic-topbar {
     display: flex !important;
     flex-wrap: nowrap;
@@ -5127,44 +5128,44 @@ button, input, textarea, select {
     justify-content: space-between;
     position: relative;
     height: 46px;
-    padding: 0 10px;
+    padding: 0 12px;
   }
   .topbar-mission {
     min-width: 0;
     gap: 6px;
-    flex: 0 0 auto;
-    max-width: 38%;
+    flex: 1 1 auto;
+    max-width: none;
   }
   .mission-title {
     font-size: 10px;
     letter-spacing: 0.04em;
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 100%;
+    overflow: visible;
+    text-overflow: clip;
   }
   .mission-badge {
     display: none;
   }
   .topbar-actions {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex: 0 0 auto;
+    display: contents;
   }
   .skip-btn {
-    padding: 5px 10px;
+    position: absolute;
+    top: 46px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 5px 12px;
     font-size: 9.5px;
     gap: 5px;
     white-space: nowrap;
-    position: static;
-    transform: none;
+    z-index: 2;
   }
   .audio-btn {
     padding: 6px;
     width: 30px;
     height: 30px;
     justify-content: center;
+    flex-shrink: 0;
   }
   .audio-btn span {
     display: none;
@@ -5293,7 +5294,7 @@ button, input, textarea, select {
     height: 15px;
   }
   .cinematic-bottombar {
-    padding: 0 10px max(26px, env(safe-area-inset-bottom, 26px));
+    padding: 0 10px max(56px, calc(env(safe-area-inset-bottom, 20px) + 36px));
   }
 
   /* Centered Editorial Typography & Symmetric Alignment on Mobile */
@@ -5392,6 +5393,30 @@ button, input, textarea, select {
     top: 66px;
     width: calc(100vw - 24px);
     max-width: 340px;
+  }
+  .hero-bottom-rule {
+    overflow: hidden;
+  }
+  .hero-ticker-inner {
+    justify-content: center;
+    padding: 10px 0;
+    gap: 8px 12px;
+  }
+  .head-left,
+  .head-right {
+    width: 100%;
+    max-width: 100%;
+  }
+  .head-right p {
+    max-width: 100%;
+  }
+  .cta-inner,
+  .custom-solution-card,
+  .closer-card,
+  .about-action-row,
+  .home-intro-copy {
+    max-width: 100%;
+    overflow: hidden;
   }
 }
 
