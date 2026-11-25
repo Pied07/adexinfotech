@@ -4859,18 +4859,22 @@ button, input, textarea, select {
     gap: 20px;
   }
   .services-editorial-head,
-  .custom-solution-card {
+  .custom-solution-card,
+  .closer-card {
     flex-direction: column;
     align-items: flex-start;
     gap: 20px;
   }
-  .custom-solution-card {
+  .custom-solution-card,
+  .closer-card {
     padding: 24px 18px;
   }
-  .solution-action {
+  .solution-action,
+  .closer-action {
     width: 100%;
   }
-  .solution-action .button {
+  .solution-action .button,
+  .closer-action .button {
     width: 100%;
     justify-content: center;
   }
@@ -5009,10 +5013,13 @@ button, input, textarea, select {
   .about-action-row .button,
   .cta-actions .button {
     width: auto;
-    flex: 1 1 auto;
+    flex: 1 1 0;
+    min-width: 0;
     justify-content: center;
-    padding: 10px 12px;
-    font-size: 11.5px;
+    padding: 10px 10px;
+    font-size: 11px;
+    white-space: normal;
+    text-align: center;
   }
   .cta-btn,
   .cta-btn-secondary {
@@ -5039,8 +5046,9 @@ button, input, textarea, select {
   }
   .all-services-row {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
     gap: 14px;
+    text-align: center;
   }
   .all-services-row .button {
     width: 100%;
@@ -5124,28 +5132,33 @@ button, input, textarea, select {
   .topbar-mission {
     min-width: 0;
     gap: 6px;
+    flex: 0 0 auto;
+    max-width: 38%;
   }
   .mission-title {
     font-size: 10px;
     letter-spacing: 0.04em;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
   }
   .mission-badge {
     display: none;
   }
   .topbar-actions {
-    display: contents;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
   }
   .skip-btn {
-    position: absolute;
-    top: 46px;
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 5px 12px;
+    padding: 5px 10px;
     font-size: 9.5px;
     gap: 5px;
     white-space: nowrap;
-    z-index: 2;
+    position: static;
+    transform: none;
   }
   .audio-btn {
     padding: 6px;
@@ -5280,7 +5293,56 @@ button, input, textarea, select {
     height: 15px;
   }
   .cinematic-bottombar {
-    padding: 0 10px 8px;
+    padding: 0 10px max(26px, env(safe-area-inset-bottom, 26px));
+  }
+
+  /* Centered Editorial Typography & Symmetric Alignment on Mobile */
+  .home-hero-copy,
+  .page-intro-inner,
+  .home-intro,
+  .home-section-heading,
+  .purpose-heading,
+  .services-editorial-head,
+  .studio-text-col,
+  .note-inner,
+  .note-left,
+  .note-right,
+  .cta-copy,
+  .closer-copy,
+  .solution-copy,
+  .process-card,
+  .val-card,
+  .purpose-card,
+  .contact-details-col {
+    text-align: center;
+  }
+  .home-section-heading,
+  .services-editorial-head,
+  .note-inner,
+  .cta-inner,
+  .closer-card,
+  .custom-solution-card,
+  .all-services-row {
+    align-items: center;
+    text-align: center;
+  }
+  .mars-eyebrow,
+  .page-intro-badge,
+  .cta-eyebrow,
+  .editorial-link,
+  .service-category-pills,
+  .process-card-top,
+  .purpose-card-head {
+    justify-content: center;
+    margin-inline: auto;
+  }
+  .val-icon {
+    margin-inline: auto;
+  }
+  .body-lead,
+  .section-subtitle,
+  .cta-sub {
+    margin-inline: auto;
   }
 
   /* Mars Planet Orb on Mobile Hero */

@@ -5,8 +5,8 @@ import { getSettings, mediaURL } from '@/lib/cms'
 import { ScrollReveal } from '@/components/ScrollReveal'
 import { MobileNav } from '@/components/MobileNav'
 import { PageTransition } from '@/components/PageTransition'
-import { ReplayMissionButton } from '@/components/ReplayMissionButton'
 import { RocketLaunchExperience } from '@/components/RocketLaunchExperience'
+import { ConditionalReplayButton } from '@/components/ConditionalReplayButton'
 import { FloatingWhatsApp } from '@/components/FloatingWhatsApp'
 
 export async function SiteShell({ children }: { children: ReactNode }) {
@@ -35,7 +35,7 @@ export async function SiteShell({ children }: { children: ReactNode }) {
             <span className="topline-note">{settings?.footerNote || 'EXPEDITION TO THE EXTRAORDINARY'}</span>
           </div>
           <div className="topline-right">
-            <ReplayMissionButton />
+            <ConditionalReplayButton />
             {phone && (
               <a href={`tel:${phone}`} className="topline-contact-link">
                 <Phone size={12} />
