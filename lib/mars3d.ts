@@ -406,3 +406,126 @@ export const atmosphereFragmentShader = `
     gl_FragColor = vec4(color, min(0.95, alpha));
   }
 `
+
+export function createEarthConcreteMaps() {
+  const size = 512
+  const albedo = document.createElement('canvas')
+  albedo.width = size
+  albedo.height = size
+  const aCtx = albedo.getContext('2d')!
+  const aImg = aCtx.createImageData(size, size)
+
+  const bump = document.createElement('canvas')
+  bump.width = size
+  bump.height = size
+  const bCtx = bump.getContext('2d')!
+  const bImg = bCtx.createImageData(size, size)
+
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const u = x / size
+      const v = y / size
+      const macro = fbm3(u * 4, v * 4, 1.2, 4)
+      const grit = fbm3(u * 28, v * 28, 3.7, 3)
+
+      // Concrete slab expansion joints every 64px
+      const seamX = Math.min(x % 64, 64 - (x % 64))
+      const seamY = Math.min(y % 64, 64 - (y % 64))
+      const seam = seamX < 2 || seamY < 2 ? 0.65 : 1.0
+
+      const base = (72 + (macro - 0.5) * 28 + (grit - 0.5) * 26) * seam
+      const idx = (y * size + x) * 4
+      aImg.data[idx] = Math.max(0, Math.min(255, base * 0.96))
+      aImg.data[idx + 1] = Math.max(0, Math.min(255, base * 1.0))
+      aImg.data[idx + 2] = Math.max(0, Math.min(255, base * 1.08))
+      aImg.data[idx + 3] = 255
+
+      const bv = Math.max(0, Math.min(255, (128 + (grit - 0.5) * 90) * seam))
+      bImg.data[idx] = bv
+      bImg.data[idx + 1] = bv
+      bImg.data[idx + 2] = bv
+      bImg.data[idx + 3] = 255
+    }
+  }
+
+  aCtx.putImageData(aImg, 0, 0)
+  bCtx.putImageData(bImg, 0, 0)
+
+  const map = new THREE.CanvasTexture(albedo)
+  map.colorSpace = THREE.SRGBColorSpace
+  map.wrapS = THREE.RepeatWrapping
+  map.wrapT = THREE.RepeatWrapping
+  map.repeat.set(22, 22)
+
+  const bumpMap = new THREE.CanvasTexture(bump)
+  bumpMap.wrapS = THREE.RepeatWrapping
+  bumpMap.wrapT = THREE.RepeatWrapping
+  bumpMap.repeat.set(22, 22)
+
+  return { map, bumpMap }
+}
+
+export function createMarsRegolithMaps() {
+  const size = 512
+  const albedo = document.createElement('canvas')
+  albedo.width = size
+  albedo.height = size
+  const aCtx = albedo.getContext('2d')!
+  const aImg = aCtx.createImageData(size, size)
+
+  const bump = document.createElement('canvas')
+  bump.width = size
+  bump.height = size
+  const bCtx = bump.getContext('2d')!
+  const bImg = bCtx.createImageData(size, size)
+
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const u = x / size
+      const v = y / size
+
+      // Wind-blown Martian ripples + coarse basalt gravel
+      const ripple = Math.sin(u * Math.PI * 16 + fbm3(u * 5, v * 5, 2.1, 3) * 4.5) * 0.5 + 0.5
+      const soil = fbm3(u * 6, v * 6, 4.4, 4)
+      const pebbles = fbm3(u * 26, v * 26, 8.2, 3)
+
+      const basalt = Math.max(0, Math.min(1, (0.46 - soil) * 3.0))
+      let r = 166 + (ripple - 0.5) * 24 + (pebbles - 0.5) * 28
+      let g = 74 + (ripple - 0.5) * 14 + (pebbles - 0.5) * 16
+      let b = 42 + (ripple - 0.5) * 8 + (pebbles - 0.5) * 10
+
+      r = r * (1 - basalt * 0.5) + 74 * (basalt * 0.5)
+      g = g * (1 - basalt * 0.5) + 38 * (basalt * 0.5)
+      b = b * (1 - basalt * 0.4) + 30 * (basalt * 0.4)
+
+      const idx = (y * size + x) * 4
+      aImg.data[idx] = Math.max(0, Math.min(255, r))
+      aImg.data[idx + 1] = Math.max(0, Math.min(255, g))
+      aImg.data[idx + 2] = Math.max(0, Math.min(255, b))
+      aImg.data[idx + 3] = 255
+
+      const bv = Math.max(0, Math.min(255, 100 + ripple * 70 + pebbles * 80))
+      bImg.data[idx] = bv
+      bImg.data[idx + 1] = bv
+      bImg.data[idx + 2] = bv
+      bImg.data[idx + 3] = 255
+    }
+  }
+
+  aCtx.putImageData(aImg, 0, 0)
+  bCtx.putImageData(bImg, 0, 0)
+
+  const map = new THREE.CanvasTexture(albedo)
+  map.colorSpace = THREE.SRGBColorSpace
+  map.wrapS = THREE.RepeatWrapping
+  map.wrapT = THREE.RepeatWrapping
+  map.repeat.set(28, 28)
+
+  const bumpMap = new THREE.CanvasTexture(bump)
+  bumpMap.wrapS = THREE.RepeatWrapping
+  bumpMap.wrapT = THREE.RepeatWrapping
+  bumpMap.repeat.set(28, 28)
+
+  return { map, bumpMap }
+}
+

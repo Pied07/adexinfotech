@@ -8,6 +8,9 @@ import {
   createRealisticMarsMaps,
   createMartianCloudTexture,
   createRealisticMoonMaps,
+  createEarthConcreteMaps,
+  createMarsRegolithMaps,
+  fbm3,
   atmosphereVertexShader,
   atmosphereFragmentShader,
 } from '@/lib/mars3d'
@@ -1272,15 +1275,102 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
     earthPanoramaMesh.position.y = 60
     earthSceneGroup.add(earthPanoramaMesh)
 
-    // B. Concrete Launch Facility Apron
+    // B. Hyper-Realistic Weathered Concrete Launch Facility Apron
+    const earthConcrete = createEarthConcreteMaps()
     const groundMesh = new THREE.Mesh(
       new THREE.PlaneGeometry(600, 600),
-      new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.9, metalness: 0.1 })
+      new THREE.MeshStandardMaterial({
+        map: earthConcrete.map,
+        bumpMap: earthConcrete.bumpMap,
+        bumpScale: 0.16,
+        roughness: 0.86,
+        metalness: 0.08,
+      })
     )
     groundMesh.rotation.x = -Math.PI / 2
     groundMesh.position.y = -2
     groundMesh.receiveShadow = true
     earthSceneGroup.add(groundMesh)
+
+    // B2. 3D Displaced Mountain Range Ring & Coastal Pine Forest Perimeter
+    const earthTerrainGeo = new THREE.RingGeometry(85, 285, 96, 18)
+    earthTerrainGeo.rotateX(-Math.PI / 2)
+    const ePos = earthTerrainGeo.attributes.position
+    const eColors = new Float32Array(ePos.count * 3)
+    for (let i = 0; i < ePos.count; i++) {
+      const vx = ePos.getX(i)
+      const vz = ePos.getZ(i)
+      const dist = Math.hypot(vx, vz)
+      const t = Math.max(0, Math.min(1, (dist - 92) / 170))
+      const ridge = fbm3(vx * 0.012 + 3.1, 0.5, vz * 0.012 - 1.7, 4)
+      const peak = Math.pow(t, 1.35) * (12 + ridge * 58)
+      ePos.setY(i, -2 + peak)
+      // Forest green lower slopes -> slate rock -> snow-dusted peaks
+      const snow = Math.max(0, Math.min(1, (peak - 36) / 16))
+      const rock = Math.max(0, Math.min(1, (peak - 16) / 18))
+      const r = (0.14 * (1 - rock) + 0.34 * rock) * (1 - snow) + 0.88 * snow
+      const g = (0.28 * (1 - rock) + 0.37 * rock) * (1 - snow) + 0.91 * snow
+      const b = (0.18 * (1 - rock) + 0.42 * rock) * (1 - snow) + 0.95 * snow
+      eColors[i * 3] = r
+      eColors[i * 3 + 1] = g
+      eColors[i * 3 + 2] = b
+    }
+    earthTerrainGeo.setAttribute('color', new THREE.BufferAttribute(eColors, 3))
+    earthTerrainGeo.computeVertexNormals()
+    const earthTerrainMesh = new THREE.Mesh(
+      earthTerrainGeo,
+      new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, metalness: 0.04 })
+    )
+    earthSceneGroup.add(earthTerrainMesh)
+
+    // 3D Conifer Trees around Launch Complex Perimeter
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x3b2618, roughness: 0.95 })
+    const pineMat = new THREE.MeshStandardMaterial({ color: 0x1b4332, roughness: 0.88 })
+    for (let i = 0; i < 42; i++) {
+      const ang = (i / 42) * Math.PI * 2 + (i % 3) * 0.08
+      const rad = 52 + (i % 5) * 9
+      const tx = Math.cos(ang) * rad
+      const tz = Math.sin(ang) * rad
+      const treeH = 5.5 + (i % 4) * 1.4
+      const tree = new THREE.Group()
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.42, treeH * 0.35, 6), trunkMat)
+      trunk.position.y = treeH * 0.175
+      tree.add(trunk)
+      const crown1 = new THREE.Mesh(new THREE.ConeGeometry(2.1, treeH * 0.55, 7), pineMat)
+      crown1.position.y = treeH * 0.52
+      tree.add(crown1)
+      const crown2 = new THREE.Mesh(new THREE.ConeGeometry(1.5, treeH * 0.45, 7), pineMat)
+      crown2.position.y = treeH * 0.78
+      tree.add(crown2)
+      tree.position.set(tx, -2, tz)
+      earthSceneGroup.add(tree)
+    }
+
+    // 4 Corner Floodlight Towers & 2 Cryogenic Propellant Spheres
+    const floodTowerMat = new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.75, roughness: 0.35 })
+    const floodBulbMat = new THREE.MeshBasicMaterial({ color: 0xfff3d6 })
+    for (let i = 0; i < 4; i++) {
+      const ang = (i / 4) * Math.PI * 2 + Math.PI / 4
+      const fx = Math.cos(ang) * 29
+      const fz = Math.sin(ang) * 29
+      const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.45, 24, 8), floodTowerMat)
+      mast.position.set(fx, 10, fz)
+      earthSceneGroup.add(mast)
+      const head = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.9, 0.6), floodBulbMat)
+      head.position.set(fx, 22, fz)
+      head.lookAt(0, 12, 0)
+      earthSceneGroup.add(head)
+    }
+
+    const cryoSphereMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.35, roughness: 0.32 })
+    for (const [cx, cz] of [[-24, -14], [-30, -8]]) {
+      const tank = new THREE.Mesh(new THREE.SphereGeometry(3.6, 24, 24), cryoSphereMat)
+      tank.position.set(cx, 2.2, cz)
+      earthSceneGroup.add(tank)
+      const stand = new THREE.Mesh(new THREE.CylinderGeometry(2.8, 3.2, 2.8, 8, 1, true), floodTowerMat)
+      stand.position.set(cx, -0.6, cz)
+      earthSceneGroup.add(stand)
+    }
 
     // C. Heavy Octagonal Launch Pad Deck
     const deckMesh = new THREE.Mesh(
@@ -1553,25 +1643,86 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
     marsPanoramaMesh.position.y = 80
     marsEnvironment.add(marsPanoramaMesh)
 
-    // B. Red Martian Regolith Ground Plain
-    const marsGroundGeo = new THREE.PlaneGeometry(800, 800)
-    const marsGroundMat = new THREE.MeshStandardMaterial({ color: 0x852e18, roughness: 0.95, metalness: 0.08 })
+    // B. Hyper-Realistic 3D Displaced Martian Canyon & Regolith Terrain
+    const marsRegolith = createMarsRegolithMaps()
+    const marsGroundGeo = new THREE.PlaneGeometry(800, 800, 96, 96)
+    marsGroundGeo.rotateX(-Math.PI / 2)
+    const mPos = marsGroundGeo.attributes.position
+    for (let i = 0; i < mPos.count; i++) {
+      const vx = mPos.getX(i)
+      const vz = mPos.getZ(i)
+      const dist = Math.hypot(vx, vz)
+      if (dist > 26) {
+        const blend = Math.min(1, (dist - 26) / 38)
+        const dune = fbm3(vx * 0.025 + 1.1, 0.2, vz * 0.025 - 0.8, 4)
+        const cliffFactor = Math.max(0, Math.min(1, (dist - 62) / 140))
+        const mesa = fbm3(vx * 0.011 - 4.2, 0.7, vz * 0.011 + 2.3, 4)
+        const y = blend * ((dune - 0.35) * 4.2 + Math.pow(cliffFactor, 1.4) * mesa * 42)
+        mPos.setY(i, y)
+      }
+    }
+    marsGroundGeo.computeVertexNormals()
+    const marsGroundMat = new THREE.MeshStandardMaterial({
+      map: marsRegolith.map,
+      bumpMap: marsRegolith.bumpMap,
+      bumpScale: 0.45,
+      roughness: 0.94,
+      metalness: 0.04,
+    })
     const marsGroundMesh = new THREE.Mesh(marsGroundGeo, marsGroundMat)
-    marsGroundMesh.rotation.x = -Math.PI / 2
     marsGroundMesh.position.y = 0
     marsEnvironment.add(marsGroundMesh)
 
-    // C. 50+ Real Martian Basalt & Rust Rock Boulders Scattered Around
-    const boulderMat = new THREE.MeshStandardMaterial({ color: 0x3d0b04, roughness: 0.92 })
-    for (let i = 0; i < 50; i++) {
-      const angle = (i / 50) * Math.PI * 2
-      const dist = 22 + Math.random() * 80
+    // C. 50+ Organic Jagged Martian Basalt & Iron-Oxide Boulders
+    const boulderMat = new THREE.MeshStandardMaterial({
+      color: 0x5c2012,
+      bumpMap: marsRegolith.bumpMap,
+      bumpScale: 0.35,
+      roughness: 0.92,
+      metalness: 0.06,
+    })
+    for (let i = 0; i < 55; i++) {
+      const angle = (i / 55) * Math.PI * 2 + (i % 4) * 0.11
+      const dist = 24 + ((i * 37) % 85)
       const bx = Math.cos(angle) * dist
       const bz = Math.sin(angle) * dist
-      const boulder = new THREE.Mesh(new THREE.DodecahedronGeometry(1.6 + Math.random() * 3.2, 0), boulderMat)
-      boulder.position.set(bx, 1.2, bz)
-      boulder.rotation.set(Math.random(), Math.random(), Math.random())
+      const bGeo = new THREE.IcosahedronGeometry(1.4 + (i % 5) * 0.65, 1)
+      const bPos = bGeo.attributes.position
+      for (let v = 0; v < bPos.count; v++) {
+        const px = bPos.getX(v)
+        const py = bPos.getY(v)
+        const pz = bPos.getZ(v)
+        const disp = 0.72 + fbm3(px * 0.8 + i, py * 0.8, pz * 0.8, 3) * 0.56
+        bPos.setXYZ(v, px * disp, py * disp * 0.72, pz * disp)
+      }
+      bGeo.computeVertexNormals()
+      const boulder = new THREE.Mesh(bGeo, boulderMat)
+      boulder.position.set(bx, 0.8, bz)
+      boulder.rotation.set(i * 0.4, i * 1.1, i * 0.2)
       marsEnvironment.add(boulder)
+    }
+
+    // C2. 3D Jezero Base Outpost (Geodesic Habitat Dome, Solar Wings & Comms Dish)
+    const outpostGroup = new THREE.Group()
+    outpostGroup.position.set(-40, 0, -44)
+    marsEnvironment.add(outpostGroup)
+    const habShell = new THREE.Mesh(
+      new THREE.SphereGeometry(7.5, 24, 16, 0, Math.PI * 2, 0, Math.PI * 0.5),
+      new THREE.MeshStandardMaterial({ color: 0xcbd5e1, metalness: 0.45, roughness: 0.35 })
+    )
+    outpostGroup.add(habShell)
+    const habWindow = new THREE.Mesh(
+      new THREE.CylinderGeometry(7.62, 7.62, 1.4, 24, 1, true),
+      new THREE.MeshBasicMaterial({ color: 0xffb36b, side: THREE.DoubleSide })
+    )
+    habWindow.position.y = 2.1
+    outpostGroup.add(habWindow)
+    const solarPanelMat = new THREE.MeshStandardMaterial({ color: 0x0f2942, metalness: 0.8, roughness: 0.2 })
+    for (const sx of [-11.5, 11.5]) {
+      const wing = new THREE.Mesh(new THREE.BoxGeometry(7.2, 0.18, 3.4), solarPanelMat)
+      wing.position.set(sx, 2.2, 0)
+      wing.rotation.x = 0.35
+      outpostGroup.add(wing)
     }
 
     // D. High-Tech Jezero Base Landing Pad
