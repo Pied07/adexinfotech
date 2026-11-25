@@ -4677,7 +4677,7 @@ button, input, textarea, select {
   color: var(--cyan-accent);
 }
 
-/* Floating Draggable WhatsApp Comms (Icon-Only, Expands on Hover) */
+/* Floating Draggable WhatsApp Comms (Icon-Only, Expands Smoothly on Hover / 1st Tap) */
 .whatsapp {
   position: fixed;
   z-index: 85;
@@ -4687,11 +4687,13 @@ button, input, textarea, select {
   color: #FFFFFF;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 0;
-  width: 46px;
+  width: auto;
+  min-width: 46px;
+  max-width: 46px;
   height: 46px;
-  padding: 0;
+  padding: 0 12px;
   border-radius: 999px;
   box-shadow: 0 10px 25px rgba(16, 185, 129, 0.4), 0 0 15px rgba(34, 211, 238, 0.3);
   font-size: 12px;
@@ -4700,8 +4702,9 @@ button, input, textarea, select {
   cursor: grab;
   touch-action: none;
   user-select: none;
+  -webkit-user-drag: none;
   overflow: hidden;
-  transition: width 0.25s ease, padding 0.25s ease, gap 0.25s ease, box-shadow 0.25s ease;
+  transition: max-width 0.26s ease, padding 0.26s ease, gap 0.26s ease, box-shadow 0.26s ease;
 }
 
 .whatsapp.is-dragging {
@@ -4718,18 +4721,32 @@ button, input, textarea, select {
   opacity: 0;
   overflow: hidden;
   white-space: nowrap;
-  transition: max-width 0.25s ease, opacity 0.2s ease;
+  transition: max-width 0.26s ease, opacity 0.2s ease;
 }
 
-.whatsapp:hover {
-  width: auto;
-  padding: 0 16px;
+@media (hover: hover) and (pointer: fine) {
+  .whatsapp:hover:not(.is-dragging) {
+    max-width: 170px;
+    padding: 0 16px 0 13px;
+    gap: 8px;
+    box-shadow: 0 14px 32px rgba(16, 185, 129, 0.55), 0 0 20px var(--cyan-accent);
+  }
+
+  .whatsapp:hover:not(.is-dragging) .whatsapp-label {
+    max-width: 96px;
+    opacity: 1;
+  }
+}
+
+.whatsapp.is-expanded {
+  max-width: 170px;
+  padding: 0 16px 0 13px;
   gap: 8px;
   box-shadow: 0 14px 32px rgba(16, 185, 129, 0.55), 0 0 20px var(--cyan-accent);
 }
 
-.whatsapp:hover .whatsapp-label {
-  max-width: 90px;
+.whatsapp.is-expanded .whatsapp-label {
+  max-width: 96px;
   opacity: 1;
 }
 
@@ -5383,14 +5400,20 @@ button, input, textarea, select {
     font-size: 8px;
   }
 
-  /* Floating WhatsApp icon-only button on mobile */
+  /* Floating WhatsApp icon-only button on mobile (expands on 1st tap via .is-expanded) */
   .whatsapp {
     right: 14px;
     bottom: 14px;
-    width: 42px;
+    min-width: 42px;
+    max-width: 42px;
     height: 42px;
-    padding: 0;
+    padding: 0 10px;
     box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+  }
+  .whatsapp.is-expanded {
+    max-width: 160px;
+    padding: 0 14px 0 11px;
+    gap: 7px;
   }
 
   .marquee-service-card {
