@@ -17,5 +17,14 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default function SiteLayout({ children }: { children: React.ReactNode }) {
-  return <SiteShell>{children}</SiteShell>
+  return (
+    // This layout owns the <html>/<body> for all (site) routes.
+    // The root app/layout.tsx is a passthrough so it doesn't conflict with
+    // the Payload admin's own <html>/<body> in app/(payload)/layout.tsx.
+    <html lang="en">
+      <body style={{ margin: 0, padding: 0 }}>
+        <SiteShell>{children}</SiteShell>
+      </body>
+    </html>
+  )
 }
