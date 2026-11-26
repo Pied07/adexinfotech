@@ -10,7 +10,6 @@ import { Inquiries } from './payload/collections/Inquiries.ts'
 import { Media } from './payload/collections/Media.ts'
 import { Users } from './payload/collections/Users.ts'
 import { SiteSettings } from './payload/globals/SiteSettings.ts'
-import { migrations } from './migrations/index.ts'
 
 // Configure the PostgreSQL client before Payload initializes its connection pool.
 setDefaultResultOrder('ipv4first')
@@ -61,7 +60,6 @@ export default buildConfig({
     // Never prompt for an interactive schema push inside a web request. This
     // also prevents data-loss schema changes from being applied at runtime.
     push: false,
-    prodMigrations: migrations,
   }),
   typescript: { outputFile: 'payload-types.ts' },
 })
