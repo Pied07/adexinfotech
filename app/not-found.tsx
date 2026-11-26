@@ -5,6 +5,8 @@ import '@/app/(site)/globals.css'
 import { getSettings, mediaURL } from '@/lib/cms'
 import { NotFoundTorchScene } from '@/components/NotFoundTorchScene'
 
+export const dynamic = 'force-dynamic'
+
 export const metadata = {
   title: '404 — Wrong Way | MARSMENT',
   description: 'This route does not exist.',

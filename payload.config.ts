@@ -8,6 +8,7 @@ import { Inquiries } from './payload/collections/Inquiries.ts'
 import { Media } from './payload/collections/Media.ts'
 import { Users } from './payload/collections/Users.ts'
 import { SiteSettings } from './payload/globals/SiteSettings.ts'
+import { migrations } from './migrations/index.ts'
 
 export default buildConfig({
   admin: { user: 'users', importMap: { baseDir: process.cwd() } },
@@ -32,6 +33,7 @@ export default buildConfig({
   secret: process.env.PAYLOAD_SECRET!,
   db: postgresAdapter({
     pool: { connectionString: process.env.DATABASE_URI || '' },
+    prodMigrations: migrations,
   }),
   typescript: { outputFile: 'payload-types.ts' },
 })
