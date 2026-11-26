@@ -2,6 +2,8 @@ import { postgresAdapter } from '@payloadcms/db-postgres'
 import { EXPERIMENTAL_TableFeature, lexicalEditor } from '@payloadcms/richtext-lexical'
 import { buildConfig } from 'payload'
 import { cloudinaryStorage } from 'payload-storage-cloudinary'
+import { setDefaultResultOrder } from 'node:dns'
+import { setDefaultAutoSelectFamily } from 'node:net'
 import { Services } from './payload/collections/Services.ts'
 import { Posts } from './payload/collections/Posts.ts'
 import { Inquiries } from './payload/collections/Inquiries.ts'
@@ -9,6 +11,24 @@ import { Media } from './payload/collections/Media.ts'
 import { Users } from './payload/collections/Users.ts'
 import { SiteSettings } from './payload/globals/SiteSettings.ts'
 import { migrations } from './migrations/index.ts'
+
+// Configure the PostgreSQL client before Payload initializes its connection pool.
+setDefaultResultOrder('ipv4first')
+setDefaultAutoSelectFamily(false)
+
+const databaseConnectionString = (() => {
+  const value = process.env.DATABASE_URI || ''
+  try {
+    const uri = new URL(value)
+    // Keep pg's current secure behavior explicit and avoid its legacy-mode warning.
+    if (uri.searchParams.get('sslmode') === 'require') {
+      uri.searchParams.set('sslmode', 'verify-full')
+    }
+    return uri.toString()
+  } catch {
+    return value
+  }
+})()
 
 export default buildConfig({
   admin: { user: 'users', importMap: { baseDir: process.cwd() } },
@@ -32,7 +52,12 @@ export default buildConfig({
   editor: lexicalEditor({ features: ({ defaultFeatures }) => [...defaultFeatures, EXPERIMENTAL_TableFeature()] }),
   secret: process.env.PAYLOAD_SECRET!,
   db: postgresAdapter({
-    pool: { connectionString: process.env.DATABASE_URI || '' },
+    pool: {
+      connectionString: databaseConnectionString,
+      connectionTimeoutMillis: 10_000,
+      keepAlive: true,
+      max: 5,
+    },
     prodMigrations: migrations,
   }),
   typescript: { outputFile: 'payload-types.ts' },
