@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import type { ReactNode } from 'react'
-import { ArrowUpRight, Sparkles, Rocket } from 'lucide-react'
+import { ArrowUpRight, Rocket } from 'lucide-react'
+import { getSettings } from '@/lib/cms'
 
 export function PageIntro({ eyebrow, title, text }: { eyebrow: string; title: ReactNode; text?: string }) {
   return (
@@ -17,7 +18,15 @@ export function PageIntro({ eyebrow, title, text }: { eyebrow: string; title: Re
   )
 }
 
-export function CTA() {
+export async function CTA() {
+  const s = (await getSettings()) as Record<string, unknown> | null
+  const eyebrow = (s?.ctaEyebrow as string) || 'EXPEDITION READY'
+  const heading = (s?.ctaHeading as string) || 'Ready to Launch'
+  const accent = (s?.ctaAccent as string) || 'Your Next Breakthrough?'
+  const description =
+    (s?.ctaDescription as string) ||
+    'Whether you need a world-class web platform, custom software architecture, or aggressive digital growth marketing, our team is primed for departure.'
+
   return (
     <section className="cta-section">
       <div className="cta-ambient-mesh" />
@@ -25,12 +34,10 @@ export function CTA() {
         <div className="cta-copy">
           <div className="cta-eyebrow">
             <Rocket size={14} className="text-cyan" />
-            <span>EXPEDITION READY</span>
+            <span>{eyebrow}</span>
           </div>
-          <h2>Ready to Launch<br /><span className="text-gradient-mars">Your Next Breakthrough?</span></h2>
-          <p className="cta-sub">
-            Whether you need a world-class web platform, custom software architecture, or aggressive digital growth marketing, our team is primed for departure.
-          </p>
+          <h2>{heading}<br /><span className="text-gradient-mars">{accent}</span></h2>
+          <p className="cta-sub">{description}</p>
         </div>
         <div className="cta-actions">
           <Link href="/contact" className="button button-mars-quote cta-btn">

@@ -59,10 +59,16 @@ export async function SiteShell({ children }: { children: ReactNode }) {
             </div>
             <div className="brand-copy">
               <strong className="brand-title">
-                <span className="brand-part-mars">MARS</span>
-                <span className="brand-part-ment">MENT</span>
+                {name.toUpperCase() === 'MARSMENT' ? (
+                  <>
+                    <span className="brand-part-mars">MARS</span>
+                    <span className="brand-part-ment">MENT</span>
+                  </>
+                ) : (
+                  <span className="brand-part-mars">{name}</span>
+                )}
               </strong>
-              <small className="brand-sub">WEB • DEVELOPMENT • MARKETING</small>
+              <small className="brand-sub">{tagline}</small>
             </div>
           </Link>
 
@@ -112,14 +118,20 @@ export async function SiteShell({ children }: { children: ReactNode }) {
               </div>
               <div className="brand-copy">
                 <strong className="brand-title">
-                  <span className="brand-part-mars">MARS</span>
-                  <span className="brand-part-ment">MENT</span>
+                  {name.toUpperCase() === 'MARSMENT' ? (
+                    <>
+                      <span className="brand-part-mars">MARS</span>
+                      <span className="brand-part-ment">MENT</span>
+                    </>
+                  ) : (
+                    <span className="brand-part-mars">{name}</span>
+                  )}
                 </strong>
-                <small className="brand-sub">WEB • DEVELOPMENT • MARKETING</small>
+                <small className="brand-sub">{tagline}</small>
               </div>
             </Link>
             <p className="footer-mission-statement">
-              Deep-space precision engineering for modern brands. We forge web solutions, custom digital architectures, and aggressive growth marketing that propel businesses beyond conventional boundaries.
+              {settings?.heroDescription || 'Deep-space precision engineering for modern brands. We forge web solutions, custom digital architectures, and aggressive growth marketing that propel businesses beyond conventional boundaries.'}
             </p>
             <div className="footer-mars-badge">
               <span className="badge-orbit" />

@@ -1,17 +1,18 @@
 import Link from 'next/link'
 import { ArrowUpRight, Radio, Calendar, User } from 'lucide-react'
 import { CTA, PageIntro } from '@/components/Blocks'
-import { getPosts, mediaURL } from '@/lib/cms'
+import { getPosts, getSettings, mediaURL } from '@/lib/cms'
 
 export default async function BlogPage() {
-  const posts = await getPosts()
+  const [posts, rawSettings] = await Promise.all([getPosts(), getSettings()])
+  const settings = rawSettings as Record<string, unknown> | null
 
   return (
     <main className="blog-page">
       <PageIntro
-        eyebrow="TRANSMISSIONS & RADAR • MARSMENT"
-        title={<>Insights From The Edge<br />Of Innovation.</>}
-        text="Deep dives into web architecture, search engine algorithms, artificial intelligence, and digital performance strategy."
+        eyebrow={(settings?.blogPageEyebrow as string) || 'TRANSMISSIONS & RADAR • MARSMENT'}
+        title={<>{(settings?.blogPageTitle as string) || 'Insights From The Edge'}<br />{(settings?.blogPageAccent as string) || 'Of Innovation.'}</>}
+        text={(settings?.blogPageSubtitle as string) || 'Deep dives into web architecture, search engine algorithms, artificial intelligence, and digital performance strategy.'}
       />
 
       <section className="listing-section container">

@@ -2447,11 +2447,31 @@ button, input, textarea, select {
 
 .home-hero-foot {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 14px;
+  gap: 12px 14px;
   margin-top: 48px;
   font-size: 11px;
   color: var(--text-muted);
+}
+
+.msme-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: rgba(34, 211, 238, 0.08);
+  border: 1px solid rgba(34, 211, 238, 0.32);
+  color: #e2e8f0;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  box-shadow: 0 0 16px rgba(34, 211, 238, 0.12);
+}
+
+.msme-badge-pill svg {
+  color: var(--cyan-accent);
+  flex-shrink: 0;
 }
 
 .hero-telemetry-tag {
@@ -2492,10 +2512,11 @@ button, input, textarea, select {
 
 .mars-orb-atmosphere {
   position: absolute;
-  inset: -15px;
+  inset: 16%;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(232, 69, 44, 0.3) 0%, rgba(34, 211, 238, 0.15) 60%, transparent 80%);
-  filter: blur(20px);
+  background: radial-gradient(circle, rgba(232, 69, 44, 0.28) 0%, rgba(34, 211, 238, 0.14) 60%, transparent 80%);
+  filter: blur(18px);
+  pointer-events: none;
 }
 
 .mars-orb-core {
@@ -2515,6 +2536,8 @@ button, input, textarea, select {
   height: 100%;
   position: relative;
   cursor: grab;
+  touch-action: none;
+  user-select: none;
 }
 
 .hero-mars-canvas-host canvas {
@@ -3758,6 +3781,87 @@ button, input, textarea, select {
   line-height: 1.85;
   color: var(--text-body);
   margin-bottom: 20px;
+}
+
+.msme-logo-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.msme-logo-inline-text {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  color: #e2e8f0;
+}
+
+.msme-logo-badge {
+  display: inline-flex;
+  align-items: center;
+}
+
+.msme-about-row {
+  margin-top: 22px;
+}
+
+.cert-pill-thumb {
+  width: 22px;
+  height: 16px;
+  object-fit: cover;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  flex-shrink: 0;
+}
+
+.cert-gallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  width: 100%;
+}
+
+.cert-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(34, 211, 238, 0.28);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+}
+
+.cert-card-img-wrap {
+  width: 72px;
+  height: 52px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #ffffff;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.cert-card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.cert-card-meta strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 2px;
+}
+
+.cert-card-meta small {
+  display: block;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  line-height: 1.4;
 }
 
 .about-action-row {

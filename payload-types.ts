@@ -651,11 +651,97 @@ export interface SiteSetting {
    * Square or compact logo used for the browser tab icon. Falls back to Logo when empty.
    */
   logoIcon?: (number | null) | Media;
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  /**
+   * Country code and number, digits only.
+   */
+  whatsappNumber?: string | null;
+  socialLinks?:
+    | {
+        label: string;
+        url: string;
+        id?: string | null;
+      }[]
+    | null;
+  footerNote?: string | null;
+  /**
+   * Upload your MSME certificate or other official recognitions. Displayed on the Home and About pages.
+   */
+  certificates?:
+    | {
+        title: string;
+        subtitle?: string | null;
+        image: number | Media;
+        showInHero?: boolean | null;
+        id?: string | null;
+      }[]
+    | null;
+  heroEyebrow?: string | null;
   heroTitle?: string | null;
   heroAccent?: string | null;
   heroDescription?: string | null;
   heroImage?: (number | null) | Media;
+  heroOrbitalSpeed?: string | null;
+  heroMotto?: string | null;
+  heroTickerItems?:
+    | {
+        label: string;
+        id?: string | null;
+      }[]
+    | null;
+  introEyebrow?: string | null;
+  introTitle?: string | null;
+  introAccent?: string | null;
+  introTitleEnd?: string | null;
+  introLead?: string | null;
+  introMetrics?:
+    | {
+        value: number;
+        suffix?: string | null;
+        label: string;
+        id?: string | null;
+      }[]
+    | null;
+  servicesEyebrow?: string | null;
+  servicesHeading?: string | null;
+  servicesHeadingAccent?: string | null;
+  servicesSubtitle?: string | null;
+  studioEyebrow?: string | null;
+  studioHeading?: string | null;
+  studioHeadingAccent?: string | null;
+  studioDescription?: string | null;
+  studioHighlights?:
+    | {
+        title: string;
+        description: string;
+        id?: string | null;
+      }[]
+    | null;
+  processEyebrow?: string | null;
+  processHeading?: string | null;
+  processHeadingAccent?: string | null;
+  processSubtitle?: string | null;
+  processStages?:
+    | {
+        step: string;
+        title: string;
+        description: string;
+        id?: string | null;
+      }[]
+    | null;
+  transmissionHeadline?: string | null;
+  transmissionAccent?: string | null;
+  transmissionLabel?: string | null;
+  transmissionCopy?: string | null;
+  aboutEyebrow?: string | null;
+  aboutIntroTitle?: string | null;
+  aboutIntroAccent?: string | null;
   aboutImage?: (number | null) | Media;
+  aboutFirmEyebrow?: string | null;
+  aboutFirmHeading?: string | null;
+  aboutFirmAccent?: string | null;
   about?: {
     root: {
       type: string;
@@ -673,20 +759,49 @@ export interface SiteSetting {
   } | null;
   mission?: string | null;
   vision?: string | null;
-  email?: string | null;
-  phone?: string | null;
-  address?: string | null;
-  /**
-   * Country code and number, digits only.
-   */
-  whatsappNumber?: string | null;
-  socialLinks?:
+  aboutValues?:
     | {
-        label: string;
-        url: string;
+        title: string;
+        description: string;
         id?: string | null;
       }[]
     | null;
+  aboutCloserEyebrow?: string | null;
+  aboutCloserHeading?: string | null;
+  aboutCloserAccent?: string | null;
+  aboutCloserDescription?: string | null;
+  servicesPageEyebrow?: string | null;
+  servicesPageTitle?: string | null;
+  servicesPageAccent?: string | null;
+  servicesPageSubtitle?: string | null;
+  servicesEditorialTitle?: string | null;
+  servicesEditorialDescription?: string | null;
+  customSolutionTitle?: string | null;
+  customSolutionDescription?: string | null;
+  blogPageEyebrow?: string | null;
+  blogPageTitle?: string | null;
+  blogPageAccent?: string | null;
+  blogPageSubtitle?: string | null;
+  contactPageEyebrow?: string | null;
+  contactPageTitle?: string | null;
+  contactPageAccent?: string | null;
+  contactPageSubtitle?: string | null;
+  contactDetailsHeading?: string | null;
+  contactDetailsAccent?: string | null;
+  contactBlurb?: string | null;
+  contactResponseGuarantee?: string | null;
+  contactFormTitle?: string | null;
+  contactFormIntro?: string | null;
+  ctaEyebrow?: string | null;
+  ctaHeading?: string | null;
+  ctaAccent?: string | null;
+  ctaDescription?: string | null;
+  privacyEyebrow?: string | null;
+  privacyTitle?: string | null;
+  privacySubtitle?: string | null;
+  /**
+   * Write your full Privacy Policy using rich text headings, lists, links, and tables.
+   */
   privacyPolicy?: {
     root: {
       type: string;
@@ -702,6 +817,12 @@ export interface SiteSetting {
     };
     [k: string]: unknown;
   } | null;
+  termsEyebrow?: string | null;
+  termsTitle?: string | null;
+  termsSubtitle?: string | null;
+  /**
+   * Write your full Terms & Conditions using rich text headings, lists, links, and tables.
+   */
   terms?: {
     root: {
       type: string;
@@ -717,7 +838,6 @@ export interface SiteSetting {
     };
     [k: string]: unknown;
   } | null;
-  footerNote?: string | null;
   seoTitle?: string | null;
   seoDescription?: string | null;
   updatedAt?: string | null;
@@ -732,14 +852,6 @@ export interface SiteSettingsSelect<T extends boolean = true> {
   tagline?: T;
   logo?: T;
   logoIcon?: T;
-  heroTitle?: T;
-  heroAccent?: T;
-  heroDescription?: T;
-  heroImage?: T;
-  aboutImage?: T;
-  about?: T;
-  mission?: T;
-  vision?: T;
   email?: T;
   phone?: T;
   address?: T;
@@ -751,9 +863,128 @@ export interface SiteSettingsSelect<T extends boolean = true> {
         url?: T;
         id?: T;
       };
-  privacyPolicy?: T;
-  terms?: T;
   footerNote?: T;
+  certificates?:
+    | T
+    | {
+        title?: T;
+        subtitle?: T;
+        image?: T;
+        showInHero?: T;
+        id?: T;
+      };
+  heroEyebrow?: T;
+  heroTitle?: T;
+  heroAccent?: T;
+  heroDescription?: T;
+  heroImage?: T;
+  heroOrbitalSpeed?: T;
+  heroMotto?: T;
+  heroTickerItems?:
+    | T
+    | {
+        label?: T;
+        id?: T;
+      };
+  introEyebrow?: T;
+  introTitle?: T;
+  introAccent?: T;
+  introTitleEnd?: T;
+  introLead?: T;
+  introMetrics?:
+    | T
+    | {
+        value?: T;
+        suffix?: T;
+        label?: T;
+        id?: T;
+      };
+  servicesEyebrow?: T;
+  servicesHeading?: T;
+  servicesHeadingAccent?: T;
+  servicesSubtitle?: T;
+  studioEyebrow?: T;
+  studioHeading?: T;
+  studioHeadingAccent?: T;
+  studioDescription?: T;
+  studioHighlights?:
+    | T
+    | {
+        title?: T;
+        description?: T;
+        id?: T;
+      };
+  processEyebrow?: T;
+  processHeading?: T;
+  processHeadingAccent?: T;
+  processSubtitle?: T;
+  processStages?:
+    | T
+    | {
+        step?: T;
+        title?: T;
+        description?: T;
+        id?: T;
+      };
+  transmissionHeadline?: T;
+  transmissionAccent?: T;
+  transmissionLabel?: T;
+  transmissionCopy?: T;
+  aboutEyebrow?: T;
+  aboutIntroTitle?: T;
+  aboutIntroAccent?: T;
+  aboutImage?: T;
+  aboutFirmEyebrow?: T;
+  aboutFirmHeading?: T;
+  aboutFirmAccent?: T;
+  about?: T;
+  mission?: T;
+  vision?: T;
+  aboutValues?:
+    | T
+    | {
+        title?: T;
+        description?: T;
+        id?: T;
+      };
+  aboutCloserEyebrow?: T;
+  aboutCloserHeading?: T;
+  aboutCloserAccent?: T;
+  aboutCloserDescription?: T;
+  servicesPageEyebrow?: T;
+  servicesPageTitle?: T;
+  servicesPageAccent?: T;
+  servicesPageSubtitle?: T;
+  servicesEditorialTitle?: T;
+  servicesEditorialDescription?: T;
+  customSolutionTitle?: T;
+  customSolutionDescription?: T;
+  blogPageEyebrow?: T;
+  blogPageTitle?: T;
+  blogPageAccent?: T;
+  blogPageSubtitle?: T;
+  contactPageEyebrow?: T;
+  contactPageTitle?: T;
+  contactPageAccent?: T;
+  contactPageSubtitle?: T;
+  contactDetailsHeading?: T;
+  contactDetailsAccent?: T;
+  contactBlurb?: T;
+  contactResponseGuarantee?: T;
+  contactFormTitle?: T;
+  contactFormIntro?: T;
+  ctaEyebrow?: T;
+  ctaHeading?: T;
+  ctaAccent?: T;
+  ctaDescription?: T;
+  privacyEyebrow?: T;
+  privacyTitle?: T;
+  privacySubtitle?: T;
+  privacyPolicy?: T;
+  termsEyebrow?: T;
+  termsTitle?: T;
+  termsSubtitle?: T;
+  terms?: T;
   seoTitle?: T;
   seoDescription?: T;
   updatedAt?: T;

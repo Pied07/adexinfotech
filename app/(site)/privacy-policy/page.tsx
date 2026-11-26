@@ -1,22 +1,27 @@
 import { getSettings } from '@/lib/cms'
-import { PageIntro, RichText } from '@/components/Blocks'
+import { PageIntro, RichText, richTextHasContent } from '@/components/Blocks'
 
 export default async function PrivacyPage() {
-  const s = await getSettings()
+  const s = (await getSettings()) as Record<string, unknown> | null
+  const name = (s?.businessName as string) || 'MARSMENT'
+  const email = (s?.email as string) || 'info@marsment.com'
+  const hasRichContent = richTextHasContent(s?.privacyPolicy)
+
   return (
     <main className="legal-page">
       <PageIntro
-        eyebrow="LEGAL PROTOCOL • MARSMENT"
-        title="Privacy Policy"
-        text="How we protect, process, and handle your data across all digital touchpoints."
+        eyebrow={(s?.privacyEyebrow as string) || `LEGAL PROTOCOL • ${name.toUpperCase()}`}
+        title={(s?.privacyTitle as string) || 'Privacy Policy'}
+        text={(s?.privacySubtitle as string) || 'How we protect, process, and handle your data across all digital touchpoints.'}
       />
       <article className="legal-content container">
-        <RichText value={s?.privacyPolicy} />
-        {!s?.privacyPolicy && (
+        {hasRichContent ? (
+          <RichText value={s?.privacyPolicy} />
+        ) : (
           <div className="legal-default-body">
             <h2>Our Commitment to Privacy</h2>
             <p>
-              At MARSMENT, your data integrity and confidentiality are paramount. We collect only the information required to deliver high-quality technical engineering, consulting, and growth marketing services.
+              At {name}, your data integrity and confidentiality are paramount. We collect only the information required to deliver high-quality technical engineering, consulting, and growth marketing services.
             </p>
             <h2>Information We Collect</h2>
             <p>
@@ -32,7 +37,8 @@ export default async function PrivacyPage() {
             </p>
             <h2>Inquiries</h2>
             <p>
-              For any questions regarding this policy, contact our compliance team at <a href="mailto:info@marsment.com" className="text-cyan">info@marsment.com</a>.
+              For any questions regarding this policy, contact our compliance team at{' '}
+              <a href={`mailto:${email}`} className="text-cyan">{email}</a>.
             </p>
           </div>
         )}

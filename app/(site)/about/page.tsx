@@ -1,19 +1,47 @@
 import Link from 'next/link'
 import { ArrowUpRight, Compass, Target, Eye, Sparkles, Shield, Rocket } from 'lucide-react'
-import { CTA, PageIntro, RichText } from '@/components/Blocks'
+import { CTA, PageIntro, RichText, richTextHasContent } from '@/components/Blocks'
+import { CertificateBadges, type CertificateItem } from '@/components/CertificateBadges'
 import { getSettings, mediaURL } from '@/lib/cms'
 
 export default async function AboutPage() {
-  const settings = await getSettings()
+  const rawSettings = await getSettings()
+  const settings = rawSettings as Record<string, unknown> | null
+  const name = (settings?.businessName as string) || 'MARSMENT'
   const image = mediaURL(settings?.aboutImage) || process.env.NEXT_PUBLIC_ABOUT_IMAGE_URL
-  const alt = typeof settings?.aboutImage === 'object' && settings.aboutImage ? settings.aboutImage.alt || 'The MARSMENT team at work' : 'MARSMENT Mission Headquarters'
+  const alt = typeof settings?.aboutImage === 'object' && settings?.aboutImage ? (settings.aboutImage as { alt?: string }).alt || `The ${name} team at work` : `${name} Mission Headquarters`
+  const certificates = (settings?.certificates as CertificateItem[] | undefined) || undefined
+  const hasAboutRichText = richTextHasContent(settings?.about)
+
+  const valueIcons = [Shield, Sparkles, Rocket, Compass]
+  const aboutValues =
+    Array.isArray(settings?.aboutValues) && settings.aboutValues.length
+      ? (settings.aboutValues as Array<{ title?: string; description?: string }>)
+      : [
+          {
+            title: 'Radical Craftsmanship',
+            description: 'We do not cut corners. From database queries to responsive typography, every line of our work undergoes stringent review.',
+          },
+          {
+            title: 'Commercial Impact First',
+            description: 'Aesthetics without conversions is vanity. Everything we build is tied directly to user engagement, sales pipelines, and business momentum.',
+          },
+          {
+            title: 'Speed & Decisiveness',
+            description: 'Modern markets penalize delays. We prioritize tight delivery loops, agile sprints, and transparent communication.',
+          },
+          {
+            title: 'Transparent Telemetry',
+            description: 'Zero black boxes. Real-time reporting, honest appraisals, and continuous support after deployment.',
+          },
+        ]
 
   return (
     <main className="about-page">
       <PageIntro
-        eyebrow="MISSION CONTROL • ABOUT MARSMENT"
-        title={<>Precision Engineering.<br />Interplanetary Ambition.</>}
-        text={settings?.tagline || 'A high-velocity digital partner forging web platforms, software systems, and growth marketing for ambitious brands.'}
+        eyebrow={(settings?.aboutEyebrow as string) || `MISSION CONTROL • ABOUT ${name.toUpperCase()}`}
+        title={<>{(settings?.aboutIntroTitle as string) || 'Precision Engineering.'}<br />{(settings?.aboutIntroAccent as string) || 'Interplanetary Ambition.'}</>}
+        text={(settings?.tagline as string) || 'A high-velocity digital partner forging web platforms, software systems, and growth marketing for ambitious brands.'}
       />
 
       <section className="about-feature container">
@@ -38,23 +66,27 @@ export default async function AboutPage() {
         <div className="about-feature-copy" data-reveal>
           <div className="mars-eyebrow">
             <span className="eyebrow-beacon" />
-            <span>THE FIRM</span>
+            <span>{(settings?.aboutFirmEyebrow as string) || 'THE FIRM'}</span>
           </div>
           <h2 className="section-title">
-            Different disciplines.<br />
-            <span className="text-mars">One relentless vector.</span>
+            {(settings?.aboutFirmHeading as string) || 'Different disciplines.'}<br />
+            <span className="text-mars">{(settings?.aboutFirmAccent as string) || 'One relentless vector.'}</span>
           </h2>
-          <RichText value={settings?.about} />
-          {!settings?.about && (
+          {hasAboutRichText ? (
+            <RichText value={settings?.about} />
+          ) : (
             <div className="about-body-default">
               <p>
-                MARSMENT was founded on a singular premise: modern enterprises cannot afford sluggish, generic digital assets. To command attention in an hyper-competitive marketplace, you require software and digital marketing engineered with the precision of aerospace telemetry.
+                {name} was founded on a singular premise: modern enterprises cannot afford sluggish, generic digital assets. To command attention in a hyper-competitive marketplace, you require software and digital marketing engineered with the precision of aerospace telemetry.
               </p>
               <p>
                 From custom full-stack web applications and scalable cloud backends to razor-sharp search optimization (SEO/GEO) and conversion-engineered marketing funnels, we remove guesswork and build digital engines that deliver sustainable commercial superiority.
               </p>
             </div>
           )}
+          <div className="msme-about-row">
+            <CertificateBadges certificates={certificates} variant="full" />
+          </div>
           <div className="about-action-row">
             <Link className="button button-mars-quote" href="/contact">
               <span>Get a Quote / Meet the Crew</span>
@@ -87,7 +119,7 @@ export default async function AboutPage() {
             </div>
             <h3 className="purpose-title">Accelerate human & commercial progress.</h3>
             <p className="purpose-desc">
-              {settings?.mission || 'We empower forward-thinking organizations to achieve undisputed market leadership through robust custom engineering, distinct visual identity, and predictable customer acquisition channels.'}
+              {(settings?.mission as string) || 'We empower forward-thinking organizations to achieve undisputed market leadership through robust custom engineering, distinct visual identity, and predictable customer acquisition channels.'}
             </p>
             <div className="card-border-glow" />
           </article>
@@ -99,7 +131,7 @@ export default async function AboutPage() {
             </div>
             <h3 className="purpose-title">A modern web without compromise.</h3>
             <p className="purpose-desc">
-              {settings?.vision || 'A digital reality where applications are blisteringly fast, identities are unmistakable, and every customer interaction generates compounded enterprise value.'}
+              {(settings?.vision as string) || 'A digital reality where applications are blisteringly fast, identities are unmistakable, and every customer interaction generates compounded enterprise value.'}
             </p>
             <div className="card-border-glow" />
           </article>
@@ -117,26 +149,18 @@ export default async function AboutPage() {
             <h2 className="section-title">Built on unwavering standards.</h2>
           </div>
           <div className="values-grid">
-            <article className="val-card" data-reveal>
-              <div className="val-icon"><Shield size={20} className="text-cyan" /></div>
-              <h3>Radical Craftsmanship</h3>
-              <p>We do not cut corners. From database queries to responsive typography, every line of our work undergoes stringent review.</p>
-            </article>
-            <article className="val-card" data-reveal>
-              <div className="val-icon"><Sparkles size={20} className="text-orange" /></div>
-              <h3>Commercial Impact First</h3>
-              <p>Aesthetics without conversions is vanity. Everything we build is tied directly to user engagement, sales pipelines, and business momentum.</p>
-            </article>
-            <article className="val-card" data-reveal>
-              <div className="val-icon"><Rocket size={20} className="text-cyan" /></div>
-              <h3>Speed & Decisiveness</h3>
-              <p>Modern markets penalize delays. We prioritize tight delivery loops, agile sprints, and transparent communication.</p>
-            </article>
-            <article className="val-card" data-reveal>
-              <div className="val-icon"><Compass size={20} className="text-orange" /></div>
-              <h3>Transparent Telemetry</h3>
-              <p>Zero black boxes. Real-time reporting, honest appraisals, and continuous support after deployment.</p>
-            </article>
+            {aboutValues.map((val, idx) => {
+              const Icon = valueIcons[idx % valueIcons.length]
+              return (
+                <article className="val-card" key={idx} data-reveal>
+                  <div className="val-icon">
+                    <Icon size={20} className={idx % 2 === 0 ? 'text-cyan' : 'text-orange'} />
+                  </div>
+                  <h3>{val.title}</h3>
+                  <p>{val.description}</p>
+                </article>
+              )
+            })}
           </div>
         </div>
       </section>
@@ -147,14 +171,14 @@ export default async function AboutPage() {
           <div className="closer-copy">
             <div className="mars-eyebrow">
               <span className="eyebrow-beacon" />
-              <span>COMMENCE COUNTDOWN</span>
+              <span>{(settings?.aboutCloserEyebrow as string) || 'COMMENCE COUNTDOWN'}</span>
             </div>
             <h2 className="closer-title">
-              Ready to break atmospheric drag?<br />
-              <span className="text-mars">Let’s engineer what’s next.</span>
+              {(settings?.aboutCloserHeading as string) || 'Ready to break atmospheric drag?'}<br />
+              <span className="text-mars">{(settings?.aboutCloserAccent as string) || 'Let’s engineer what’s next.'}</span>
             </h2>
             <p className="closer-desc">
-              Join forward-looking brands that trust MARSMENT for digital development, systems design, and performance growth.
+              {(settings?.aboutCloserDescription as string) || `Join forward-looking brands that trust ${name} for digital development, systems design, and performance growth.`}
             </p>
           </div>
           <div className="closer-action">

@@ -58,7 +58,7 @@ export async function getCMS() {
 export async function getSettings() {
   const payload = await getCMS()
   if (!payload) return null
-  try { return await payload.findGlobal({ slug: 'site-settings', depth: 1 }) } catch { return null }
+  try { return await payload.findGlobal({ slug: 'site-settings', depth: 2 }) } catch { return null }
 }
 
 export async function getServices(limit = 100) {

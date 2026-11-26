@@ -36,7 +36,7 @@ export function HeroMarsGlobe() {
     const width = host.clientWidth || 380
     const height = host.clientHeight || 380
     const camera = new THREE.PerspectiveCamera(34, width / height, 0.1, 100)
-    camera.position.set(0, 0, 4.15)
+    camera.position.set(0, 0, 6.2)
 
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -120,21 +120,66 @@ export function HeroMarsGlobe() {
     const atmoMesh = new THREE.Mesh(atmoGeo, atmoMat)
     scene.add(atmoMesh)
 
-    // Subtle interactive pointer tilt
-    let targetTiltX = 0.18
-    let pointerActive = false
+    // Interactive drag-to-rotate anywhere the user drags the mouse
+    let isDragging = false
+    let activePointerId: number | null = null
+    let lastPointerX = 0
+    let lastPointerY = 0
+    let velX = 0
+    let velY = 0
+
+    const onPointerDown = (e: PointerEvent) => {
+      if (e.button !== 0 && e.pointerType === 'mouse') return
+      isDragging = true
+      activePointerId = e.pointerId
+      lastPointerX = e.clientX
+      lastPointerY = e.clientY
+      velX = 0
+      velY = 0
+      host.style.cursor = 'grabbing'
+      try {
+        host.setPointerCapture(e.pointerId)
+      } catch {
+        // Ignore if pointer capture is unsupported
+      }
+    }
+
     const onPointerMove = (e: PointerEvent) => {
-      const rect = host.getBoundingClientRect()
-      const ny = ((e.clientY - rect.top) / rect.height - 0.5) * 2
-      targetTiltX = 0.18 + ny * 0.22
-      pointerActive = true
+      if (!isDragging || (activePointerId !== null && e.pointerId !== activePointerId)) return
+      const dx = e.clientX - lastPointerX
+      const dy = e.clientY - lastPointerY
+      lastPointerX = e.clientX
+      lastPointerY = e.clientY
+
+      const rotYDelta = dx * 0.0085
+      const rotXDelta = dy * 0.0085
+      marsGroup.rotation.y += rotYDelta
+      marsGroup.rotation.x = Math.max(-1.35, Math.min(1.35, marsGroup.rotation.x + rotXDelta))
+
+      velY = rotYDelta
+      velX = rotXDelta
     }
-    const onPointerLeave = () => {
-      targetTiltX = 0.18
-      pointerActive = false
+
+    const endDrag = (e: PointerEvent) => {
+      if (!isDragging || (activePointerId !== null && e.pointerId !== activePointerId)) return
+      isDragging = false
+      host.style.cursor = 'grab'
+      if (activePointerId !== null) {
+        try {
+          if (host.hasPointerCapture(activePointerId)) {
+            host.releasePointerCapture(activePointerId)
+          }
+        } catch {
+          // Ignore release errors
+        }
+        activePointerId = null
+      }
     }
-    host.addEventListener('pointermove', onPointerMove)
-    host.addEventListener('pointerleave', onPointerLeave)
+
+    host.addEventListener('pointerdown', onPointerDown)
+    window.addEventListener('pointermove', onPointerMove)
+    window.addEventListener('pointerup', endDrag)
+    window.addEventListener('pointercancel', endDrag)
 
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
@@ -169,14 +214,19 @@ export function HeroMarsGlobe() {
       const dt = Math.min(0.05, (now - lastTime) / 1000)
       lastTime = now
 
-      // Rotate Mars on both Y and Z axes
-      marsGroup.rotation.y += dt * 0.24
-      marsGroup.rotation.z += dt * 0.075
-      cloudMesh.rotation.y += dt * 0.06
-
-      if (pointerActive || Math.abs(marsGroup.rotation.x - targetTiltX) > 0.001) {
-        marsGroup.rotation.x += (targetTiltX - marsGroup.rotation.x) * 0.06
+      // Apply inertia after release, otherwise gently auto-rotate Mars
+      if (!isDragging) {
+        if (Math.abs(velY) > 0.0001 || Math.abs(velX) > 0.0001) {
+          marsGroup.rotation.y += velY
+          marsGroup.rotation.x = Math.max(-1.35, Math.min(1.35, marsGroup.rotation.x + velX))
+          velY *= 0.93
+          velX *= 0.93
+        } else {
+          marsGroup.rotation.y += dt * 0.24
+          marsGroup.rotation.z += dt * 0.075
+        }
       }
+      cloudMesh.rotation.y += dt * 0.06
 
       // Sync cyan & orange shadow/rim lights directly to the CSS orbital moon positions
       const outerSC = getRingSinCos(outerRingEl)
@@ -206,8 +256,10 @@ export function HeroMarsGlobe() {
       cancelAnimationFrame(rafId)
       resizeObserver.disconnect()
       intersectionObserver.disconnect()
-      host.removeEventListener('pointermove', onPointerMove)
-      host.removeEventListener('pointerleave', onPointerLeave)
+      host.removeEventListener('pointerdown', onPointerDown)
+      window.removeEventListener('pointermove', onPointerMove)
+      window.removeEventListener('pointerup', endDrag)
+      window.removeEventListener('pointercancel', endDrag)
       marsGeo.dispose()
       marsMat.dispose()
       cloudGeo.dispose()

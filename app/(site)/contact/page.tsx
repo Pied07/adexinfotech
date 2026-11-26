@@ -4,18 +4,19 @@ import { PageIntro } from '@/components/Blocks'
 import { Mail, Phone, MapPin, Clock, ArrowUpRight, ShieldCheck, Sparkles } from 'lucide-react'
 
 export default async function ContactPage() {
-  const [settings, services] = await Promise.all([getSettings(), getServices()])
+  const [rawSettings, services] = await Promise.all([getSettings(), getServices()])
+  const settings = rawSettings as Record<string, unknown> | null
   const image = mediaURL(settings?.aboutImage) || process.env.NEXT_PUBLIC_ABOUT_IMAGE_URL
-  const email = settings?.email || 'info@marsment.com'
-  const phone = settings?.phone
-  const address = settings?.address
+  const email = (settings?.email as string) || 'info@marsment.com'
+  const phone = settings?.phone as string | undefined
+  const address = settings?.address as string | undefined
 
   return (
     <main className="contact-page">
       <PageIntro
-        eyebrow="DIRECT TRANSMISSION • MARSMENT"
-        title={<>Establish Contact.<br />Initiate Your Launch.</>}
-        text="A detailed brief, a rough idea, or a high-stakes challenge—our engineering and growth crew is ready to engage."
+        eyebrow={(settings?.contactPageEyebrow as string) || 'DIRECT TRANSMISSION • MARSMENT'}
+        title={<>{(settings?.contactPageTitle as string) || 'Establish Contact.'}<br />{(settings?.contactPageAccent as string) || 'Initiate Your Launch.'}</>}
+        text={(settings?.contactPageSubtitle as string) || 'A detailed brief, a rough idea, or a high-stakes challenge—our engineering and growth crew is ready to engage.'}
       />
 
       <section className="contact-layout container">
@@ -42,11 +43,11 @@ export default async function ContactPage() {
               <span>DIRECT CHANNELS</span>
             </div>
             <h2 className="contact-details-title">
-              Good ideas deserve<br />
-              <span className="text-mars">immediate attention.</span>
+              {(settings?.contactDetailsHeading as string) || 'Good ideas deserve'}<br />
+              <span className="text-mars">{(settings?.contactDetailsAccent as string) || 'immediate attention.'}</span>
             </h2>
             <p className="contact-blurb">
-              Reach our leadership directly. We analyze every inquiry thoroughly and reply with clear scope recommendations within one working day.
+              {(settings?.contactBlurb as string) || 'Reach our leadership directly. We analyze every inquiry thoroughly and reply with clear scope recommendations within one working day.'}
             </p>
 
             <div className="contact-methods-stack">
@@ -83,7 +84,7 @@ export default async function ContactPage() {
 
             <div className="response-guarantee-note">
               <Clock size={16} className="text-cyan" />
-              <span>Standard response window: within 24 operational hours.</span>
+              <span>{(settings?.contactResponseGuarantee as string) || 'Standard response window: within 24 operational hours.'}</span>
             </div>
           </div>
         </div>
@@ -94,9 +95,9 @@ export default async function ContactPage() {
               <span className="eyebrow-beacon" />
               <span>PROJECT SPECIFICATION</span>
             </div>
-            <h2>Request a Quote / Consultation</h2>
+            <h2>{(settings?.contactFormTitle as string) || 'Request a Quote / Consultation'}</h2>
             <p className="form-intro">
-              Provide project details below to schedule an introductory discovery session with our technical leads.
+              {(settings?.contactFormIntro as string) || 'Provide project details below to schedule an introductory discovery session with our technical leads.'}
             </p>
           </div>
           <InquiryForm services={services as unknown as { title: string }[]} />

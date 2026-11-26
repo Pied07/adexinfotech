@@ -11,15 +11,16 @@ const photos = [
 ]
 
 export default async function ServicesPage() {
-  const [cmsServices, settings] = await Promise.all([getServices(), getSettings()])
+  const [cmsServices, rawSettings] = await Promise.all([getServices(), getSettings()])
+  const settings = rawSettings as Record<string, unknown> | null
   const services = cmsServices.length ? cmsServices : starterServices.map((service) => ({ ...service, slug: serviceSlug(service.title) }))
 
   return (
     <main className="services-page">
       <PageIntro
-        eyebrow="CAPABILITIES & SYSTEMS • MARSMENT"
-        title={<>Specialized Disciplines.<br />Singular Mastery.</>}
-        text={settings?.heroDescription || 'Fifteen battle-tested technical and growth capabilities, unified under one relentless engineering standard.'}
+        eyebrow={(settings?.servicesPageEyebrow as string) || 'CAPABILITIES & SYSTEMS • MARSMENT'}
+        title={<>{(settings?.servicesPageTitle as string) || 'Specialized Disciplines.'}<br />{(settings?.servicesPageAccent as string) || 'Singular Mastery.'}</>}
+        text={(settings?.servicesPageSubtitle as string) || (settings?.heroDescription as string) || 'Fifteen battle-tested technical and growth capabilities, unified under one relentless engineering standard.'}
       />
 
       <section className="services-editorial container">
@@ -30,11 +31,11 @@ export default async function ServicesPage() {
               <span className="eyebrow-beacon" />
               <span>THE ARSENAL</span>
             </div>
-            <h2 className="section-title">Built for Velocity & Conversion</h2>
+            <h2 className="section-title">{(settings?.servicesEditorialTitle as string) || 'Built for Velocity & Conversion'}</h2>
           </div>
           <div className="head-right">
             <p>
-              Whether deploying high-load SaaS platforms, revamping visual brands, or orchestrating generative search & omnichannel ad campaigns, our capabilities scale seamlessly with your ambition.
+              {(settings?.servicesEditorialDescription as string) || 'Whether deploying high-load SaaS platforms, revamping visual brands, or orchestrating generative search & omnichannel ad campaigns, our capabilities scale seamlessly with your ambition.'}
             </p>
             <div className="service-category-pills">
               <span className="cat-pill pill-tech">Technology</span>
@@ -106,9 +107,9 @@ export default async function ServicesPage() {
               <span className="eyebrow-beacon" />
               <span>CUSTOM SPECIFICATIONS</span>
             </div>
-            <h2>Need a tailored multi-discipline engagement?</h2>
+            <h2>{(settings?.customSolutionTitle as string) || 'Need a tailored multi-discipline engagement?'}</h2>
             <p>
-              Most enterprise projects require an orchestrated mix of web engineering, CRM automation, and targeted lead generation. We build dedicated project squads shaped around your exact metrics.
+              {(settings?.customSolutionDescription as string) || 'Most enterprise projects require an orchestrated mix of web engineering, CRM automation, and targeted lead generation. We build dedicated project squads shaped around your exact metrics.'}
             </p>
           </div>
           <div className="solution-action">

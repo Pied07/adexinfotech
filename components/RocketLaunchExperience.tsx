@@ -822,6 +822,9 @@ function createMarsBumpTexture(): THREE.CanvasTexture {
   return tex
 }
 
+// Reset on every full page refresh so RocketLaunch always appears first on '/'
+let hasCompletedThisPageLoad = false
+
 // =========================================================================
 // MAIN COMPONENT
 // =========================================================================
@@ -830,7 +833,7 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
   const [stage, setStage] = useState<FlightStage>('earth_pad')
   const [isLaunched, setIsLaunched] = useState(false)
   const [audioEnabled, setAudioEnabled] = useState(false)
-  const [dismissed, setDismissed] = useState(true)
+  const [dismissed, setDismissed] = useState(() => pathname !== '/' || hasCompletedThisPageLoad)
   const [progress, setProgress] = useState(0)
 
   // Live Telemetry Readouts
@@ -856,24 +859,18 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
       return
     }
 
-    try {
-      const alreadyLaunched = sessionStorage.getItem('marsment_rocket_launched')
-      if (!alreadyLaunched) {
-        setDismissed(false)
-        document.body.style.overflow = 'hidden'
-        document.documentElement.style.overflow = 'hidden'
-      } else {
-        setDismissed(true)
-        document.body.style.overflow = ''
-        document.documentElement.style.overflow = ''
-      }
-    } catch {
+    if (!hasCompletedThisPageLoad) {
       setDismissed(false)
       document.body.style.overflow = 'hidden'
       document.documentElement.style.overflow = 'hidden'
+    } else {
+      setDismissed(true)
+      document.body.style.overflow = ''
+      document.documentElement.style.overflow = ''
     }
 
     const handleReplay = () => {
+      hasCompletedThisPageLoad = false
       setStage('earth_pad')
       setIsLaunched(false)
       setProgress(0)
@@ -966,11 +963,11 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
 
     // Scene & Camera
     const scene = new THREE.Scene()
-    const daySkyColor = new THREE.Color(0x38bdf8)
+    const daySkyColor = new THREE.Color(0x8bbbf7)
     const spaceBlack = new THREE.Color(0x040711)
     const marsSkyColor = new THREE.Color(0x591307)
-    const currentBg = new THREE.Color(0x38bdf8)
-    const expFog = new THREE.FogExp2(0x38bdf8, 0.0012)
+    const currentBg = new THREE.Color(0x8bbbf7)
+    const expFog = new THREE.FogExp2(0x9ec6f9, 0.0020)
     scene.background = currentBg
     scene.fog = expFog
 
@@ -1275,22 +1272,157 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
     earthPanoramaMesh.position.y = 60
     earthSceneGroup.add(earthPanoramaMesh)
 
-    // B. Hyper-Realistic Weathered Concrete Launch Facility Apron
+    // B. Hyper-Realistic Meadow Soil & Grass Ground + Concrete Launch Apron
     const earthConcrete = createEarthConcreteMaps()
+
+    // Procedural rich loam soil & mossy meadow ground texture
+    const meadowCanvas = document.createElement('canvas')
+    meadowCanvas.width = 512
+    meadowCanvas.height = 512
+    const mCtx = meadowCanvas.getContext('2d')!
+    mCtx.fillStyle = '#2c3d16'
+    mCtx.fillRect(0, 0, 512, 512)
+    for (let i = 0; i < 4500; i++) {
+      const px = Math.random() * 512
+      const py = Math.random() * 512
+      const r = 3 + Math.random() * 14
+      const patch = Math.random()
+      mCtx.fillStyle =
+        patch < 0.28
+          ? 'rgba(54, 40, 27, 0.45)' // rich dark soil loam
+          : patch < 0.65
+            ? 'rgba(40, 64, 20, 0.42)' // deep meadow moss
+            : 'rgba(66, 98, 28, 0.38)' // lush grass turf
+      mCtx.beginPath()
+      mCtx.arc(px, py, r, 0, Math.PI * 2)
+      mCtx.fill()
+    }
+    const meadowTex = new THREE.CanvasTexture(meadowCanvas)
+    meadowTex.colorSpace = THREE.SRGBColorSpace
+    meadowTex.wrapS = THREE.RepeatWrapping
+    meadowTex.wrapT = THREE.RepeatWrapping
+    meadowTex.repeat.set(22, 22)
+
     const groundMesh = new THREE.Mesh(
       new THREE.PlaneGeometry(600, 600),
       new THREE.MeshStandardMaterial({
-        map: earthConcrete.map,
+        map: meadowTex,
         bumpMap: earthConcrete.bumpMap,
-        bumpScale: 0.16,
-        roughness: 0.86,
-        metalness: 0.08,
+        bumpScale: 0.24,
+        roughness: 0.96,
+        metalness: 0.01,
       })
     )
     groundMesh.rotation.x = -Math.PI / 2
     groundMesh.position.y = -2
     groundMesh.receiveShadow = true
     earthSceneGroup.add(groundMesh)
+
+    // Concrete Launch Pad Apron surrounding the octagonal deck
+    const concreteApron = new THREE.Mesh(
+      new THREE.CylinderGeometry(23, 24, 0.14, 16),
+      new THREE.MeshStandardMaterial({
+        map: earthConcrete.map,
+        bumpMap: earthConcrete.bumpMap,
+        bumpScale: 0.12,
+        roughness: 0.85,
+        metalness: 0.08,
+      })
+    )
+    concreteApron.position.y = -1.94
+    concreteApron.receiveShadow = true
+    earthSceneGroup.add(concreteApron)
+
+    // B1b. Ultra-Dense Instanced 3D Meadow Grass Carpet (~2.4 Million Grass Blades) & Wildflowers
+    const createGrassTuftGeo = () => {
+      const positions: number[] = []
+      const colors: number[] = []
+      const addBlade = (angle: number, offsetX: number, offsetZ: number, h: number, w: number, lean: number) => {
+        const c = Math.cos(angle)
+        const s = Math.sin(angle)
+        const hw = w * 0.5
+        const p0x = offsetX - c * hw
+        const p0z = offsetZ - s * hw
+        const p1x = offsetX + c * hw
+        const p1z = offsetZ + s * hw
+        const tipX = offsetX + s * lean
+        const tipZ = offsetZ - c * lean
+
+        positions.push(
+          p0x, 0, p0z,
+          p1x, 0, p1z,
+          tipX, h, tipZ
+        )
+        const rootC = [0.02, 0.08, 0.01]
+        const tipC = [0.09, 0.28, 0.04]
+        colors.push(...rootC, ...rootC, ...tipC)
+      }
+      // 20-blade dense grass clump per instance
+      for (let b = 0; b < 20; b++) {
+        const bAng = (b / 20) * Math.PI * 2 + (b % 3) * 0.35
+        const spread = 0.06 + (b % 5) * 0.095
+        const ox = Math.cos(bAng) * spread
+        const oz = Math.sin(bAng) * spread
+        const bh = 0.9 + (b % 4) * 0.22
+        const bw = 0.16 + (b % 3) * 0.03
+        const bLean = 0.14 + (b % 4) * 0.06
+        addBlade(bAng + 0.5, ox, oz, bh, bw, bLean)
+      }
+      const geo = new THREE.BufferGeometry()
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
+      geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3))
+      geo.computeVertexNormals()
+      return geo
+    }
+
+    const grassGeo = createGrassTuftGeo()
+    const grassMat = new THREE.MeshStandardMaterial({
+      color: 0x82c944,
+      vertexColors: true,
+      roughness: 0.94,
+      metalness: 0.0,
+      side: THREE.DoubleSide,
+    })
+    const grassCount = 120000
+    const grassInst = new THREE.InstancedMesh(grassGeo, grassMat, grassCount)
+    grassInst.receiveShadow = true
+    const dummy = new THREE.Object3D()
+    for (let i = 0; i < grassCount; i++) {
+      const ang = (i * 2.399963) % (Math.PI * 2)
+      const r = 22.2 + Math.sqrt(i / grassCount) * 76 + Math.sin(i * 1.7) * 1.6
+      const gx = Math.cos(ang) * r
+      const gz = Math.sin(ang) * r
+      dummy.position.set(gx, -2, gz)
+      dummy.rotation.set(0, (i * 1.7) % (Math.PI * 2), 0)
+      const sc = 0.9 + ((i * 13) % 10) * 0.09
+      dummy.scale.set(sc, sc * (0.9 + (i % 4) * 0.16), sc)
+      dummy.updateMatrix()
+      grassInst.setMatrixAt(i, dummy.matrix)
+    }
+    grassInst.instanceMatrix.needsUpdate = true
+    earthSceneGroup.add(grassInst)
+
+    // Instanced Meadow Wildflowers (yellow buttercups, violet-blue lupines, white daisies)
+    const flowerGeo = new THREE.OctahedronGeometry(0.16, 0)
+    flowerGeo.scale(1.1, 0.45, 1.1)
+    const flowerMat = new THREE.MeshStandardMaterial({ roughness: 0.7, metalness: 0.02 })
+    const flowerCount = 550
+    const flowerInst = new THREE.InstancedMesh(flowerGeo, flowerMat, flowerCount)
+    const flowerPalette = [new THREE.Color(0xfacc15), new THREE.Color(0x818cf8), new THREE.Color(0xf8fafc)]
+    for (let i = 0; i < flowerCount; i++) {
+      const ang = (i * 2.399963 + 0.5) % (Math.PI * 2)
+      const r = 25 + Math.sqrt(i / flowerCount) * 78
+      dummy.position.set(Math.cos(ang) * r, -1.15 + (i % 3) * 0.12, Math.sin(ang) * r)
+      dummy.rotation.set(0, i * 0.9, 0)
+      const fs = 0.7 + (i % 4) * 0.22
+      dummy.scale.set(fs, fs, fs)
+      dummy.updateMatrix()
+      flowerInst.setMatrixAt(i, dummy.matrix)
+      flowerInst.setColorAt(i, flowerPalette[i % flowerPalette.length])
+    }
+    flowerInst.instanceMatrix.needsUpdate = true
+    if (flowerInst.instanceColor) flowerInst.instanceColor.needsUpdate = true
+    earthSceneGroup.add(flowerInst)
 
     // B2. 3D Displaced Mountain Range Ring & Coastal Pine Forest Perimeter
     const earthTerrainGeo = new THREE.RingGeometry(85, 285, 96, 18)
@@ -1323,25 +1455,204 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
     )
     earthSceneGroup.add(earthTerrainMesh)
 
-    // 3D Conifer Trees around Launch Complex Perimeter
-    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x3b2618, roughness: 0.95 })
-    const pineMat = new THREE.MeshStandardMaterial({ color: 0x1b4332, roughness: 0.88 })
-    for (let i = 0; i < 42; i++) {
-      const ang = (i / 42) * Math.PI * 2 + (i % 3) * 0.08
-      const rad = 52 + (i % 5) * 9
+    // 3D Photorealistic Branching Trees (Golden Birch/Aspen, Green Broadleaf, and Pines)
+    const makeBarkTexture = (baseHex: string, streakHex: string, horizontal: boolean) => {
+      const c = document.createElement('canvas')
+      c.width = 64
+      c.height = 128
+      const ctx = c.getContext('2d')!
+      ctx.fillStyle = baseHex
+      ctx.fillRect(0, 0, 64, 128)
+      ctx.fillStyle = streakHex
+      if (horizontal) {
+        for (let y = 0; y < 128; y += 5) {
+          const w = 6 + ((y * 13) % 18)
+          const x = (y * 19) % (64 - w)
+          ctx.fillRect(x, y, w, 1.8)
+        }
+      } else {
+        for (let x = 0; x < 64; x += 4) {
+          ctx.fillRect(x, 0, x % 8 === 0 ? 2 : 1, 128)
+        }
+      }
+      const tex = new THREE.CanvasTexture(c)
+      tex.wrapS = THREE.RepeatWrapping
+      tex.wrapT = THREE.RepeatWrapping
+      tex.repeat.set(1, 3)
+      return tex
+    }
+
+    const birchBarkMat = new THREE.MeshStandardMaterial({
+      map: makeBarkTexture('#d8d4cb', '#4a453f', true),
+      roughness: 0.9,
+      metalness: 0.02,
+    })
+    const oakBarkMat = new THREE.MeshStandardMaterial({
+      map: makeBarkTexture('#5a4636', '#33261b', false),
+      roughness: 0.95,
+      metalness: 0.02,
+    })
+
+    // Alpha-tested leaf-cluster sprite texture so sky peeks through individual leaves
+    const makeLeafClusterTexture = (palette: string[]) => {
+      const c = document.createElement('canvas')
+      c.width = 256
+      c.height = 256
+      const ctx = c.getContext('2d')!
+      ctx.clearRect(0, 0, 256, 256)
+      for (let i = 0; i < 190; i++) {
+        const ang = (i * 2.399963) % (Math.PI * 2)
+        const rad = Math.sqrt(i / 190) * 102
+        const lx = 128 + Math.cos(ang) * rad + Math.sin(i * 3.1) * 8
+        const ly = 128 + Math.sin(ang) * rad + Math.cos(i * 2.7) * 8
+        const lw = 10 + (i % 7) * 1.8
+        const lh = 5 + (i % 5) * 1.2
+        ctx.save()
+        ctx.translate(lx, ly)
+        ctx.rotate(ang + (i % 5) * 0.6)
+        ctx.fillStyle = palette[i % palette.length]
+        ctx.beginPath()
+        ctx.ellipse(0, 0, lw, lh, 0, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.restore()
+      }
+      const tex = new THREE.CanvasTexture(c)
+      tex.colorSpace = THREE.SRGBColorSpace
+      return tex
+    }
+
+    const goldenLeafMat = new THREE.MeshStandardMaterial({
+      map: makeLeafClusterTexture(['#eab308', '#ca8a04', '#facc15', '#d97706', '#a16207']),
+      alphaTest: 0.36,
+      side: THREE.DoubleSide,
+      roughness: 0.78,
+      metalness: 0.02,
+    })
+    const greenLeafMat = new THREE.MeshStandardMaterial({
+      map: makeLeafClusterTexture(['#2d5a27', '#3f7a32', '#56943f', '#1e421b', '#4a8538']),
+      alphaTest: 0.36,
+      side: THREE.DoubleSide,
+      roughness: 0.82,
+      metalness: 0.02,
+    })
+    const pineLeafMat = new THREE.MeshStandardMaterial({
+      map: makeLeafClusterTexture(['#163826', '#1e4a32', '#265c3e', '#11291c']),
+      alphaTest: 0.38,
+      side: THREE.DoubleSide,
+      roughness: 0.88,
+      metalness: 0.02,
+    })
+
+    const leafCardGeo = new THREE.PlaneGeometry(2.6, 2.6)
+    const addLeafClusterCards = (
+      parent: THREE.Group,
+      cx: number,
+      cy: number,
+      cz: number,
+      scale: number,
+      mat: THREE.MeshStandardMaterial,
+      rotSeed: number
+    ) => {
+      for (let k = 0; k < 3; k++) {
+        const card = new THREE.Mesh(leafCardGeo, mat)
+        card.position.set(cx, cy, cz)
+        card.scale.setScalar(scale)
+        card.rotation.set(
+          (k === 2 ? 0.95 : 0.25) * (k % 2 === 0 ? 1 : -1),
+          rotSeed + (k * Math.PI) / 3,
+          (k - 1) * 0.25
+        )
+        card.castShadow = true
+        card.receiveShadow = true
+        parent.add(card)
+      }
+    }
+
+    for (let i = 0; i < 58; i++) {
+      const ang = (i / 58) * Math.PI * 2 + (i % 5) * 0.05
+      // Keep the direct foreground camera corridor (around +Z) open
+      if (Math.sin(ang) > 0.65 && Math.abs(Math.cos(ang)) < 0.45) continue
+
+      const kind = i % 3 // 0: Golden Birch/Aspen, 1: Spreading Green Broadleaf, 2: Tall Pine
+      const rad = kind === 2 ? 66 + (i % 5) * 11 : 34 + (i % 7) * 9.5
       const tx = Math.cos(ang) * rad
       const tz = Math.sin(ang) * rad
-      const treeH = 5.5 + (i % 4) * 1.4
       const tree = new THREE.Group()
-      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.42, treeH * 0.35, 6), trunkMat)
-      trunk.position.y = treeH * 0.175
-      tree.add(trunk)
-      const crown1 = new THREE.Mesh(new THREE.ConeGeometry(2.1, treeH * 0.55, 7), pineMat)
-      crown1.position.y = treeH * 0.52
-      tree.add(crown1)
-      const crown2 = new THREE.Mesh(new THREE.ConeGeometry(1.5, treeH * 0.45, 7), pineMat)
-      crown2.position.y = treeH * 0.78
-      tree.add(crown2)
+
+      if (kind === 0) {
+        // Slender Pale-Barked Birch / Golden Aspen (like centerpiece in reference)
+        const h = 8.5 + (i % 4) * 1.8
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.22, h * 0.72, 7), birchBarkMat)
+        trunk.position.y = h * 0.36
+        trunk.castShadow = true
+        tree.add(trunk)
+
+        for (let b = 0; b < 6; b++) {
+          const bAng = b * 1.15 + i * 0.6
+          const by = h * (0.42 + b * 0.085)
+          const bLen = h * (0.28 - b * 0.025)
+          const limb = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.06, bLen, 5), birchBarkMat)
+          limb.position.set(Math.cos(bAng) * (bLen * 0.3), by + bLen * 0.32, Math.sin(bAng) * (bLen * 0.3))
+          limb.rotation.z = -Math.cos(bAng) * 0.55
+          limb.rotation.x = Math.sin(bAng) * 0.55
+          tree.add(limb)
+
+          addLeafClusterCards(
+            tree,
+            Math.cos(bAng) * (bLen * 0.58),
+            by + bLen * 0.62,
+            Math.sin(bAng) * (bLen * 0.58),
+            0.95 + (b % 3) * 0.22,
+            goldenLeafMat,
+            bAng
+          )
+        }
+        addLeafClusterCards(tree, 0, h * 0.94, 0, 1.05, goldenLeafMat, i * 0.7)
+      } else if (kind === 1) {
+        // Spreading Green Broadleaf Tree (like right-side tree in reference)
+        const h = 7.4 + (i % 4) * 1.5
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.38, h * 0.48, 8), oakBarkMat)
+        trunk.position.y = h * 0.24
+        trunk.castShadow = true
+        tree.add(trunk)
+
+        for (let b = 0; b < 5; b++) {
+          const bAng = (b / 5) * Math.PI * 2 + i * 0.5
+          const bLen = h * 0.38
+          const limb = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.14, bLen, 6), oakBarkMat)
+          limb.position.set(Math.cos(bAng) * (bLen * 0.36), h * 0.52, Math.sin(bAng) * (bLen * 0.36))
+          limb.rotation.z = -Math.cos(bAng) * 0.78
+          limb.rotation.x = Math.sin(bAng) * 0.78
+          tree.add(limb)
+
+          addLeafClusterCards(
+            tree,
+            Math.cos(bAng) * (bLen * 0.72),
+            h * 0.66 + (b % 2) * 0.6,
+            Math.sin(bAng) * (bLen * 0.72),
+            1.28 + (b % 2) * 0.28,
+            greenLeafMat,
+            bAng
+          )
+        }
+        addLeafClusterCards(tree, 0, h * 0.84, 0, 1.45, greenLeafMat, i * 0.9)
+      } else {
+        // Tall Coastal Pine with tiered foliage cards
+        const h = 9.5 + (i % 4) * 1.9
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.3, h * 0.82, 7), oakBarkMat)
+        trunk.position.y = h * 0.41
+        trunk.castShadow = true
+        tree.add(trunk)
+
+        for (let t = 0; t < 4; t++) {
+          const ty = h * (0.38 + t * 0.17)
+          const sc = 1.38 - t * 0.25
+          addLeafClusterCards(tree, 0, ty, 0, sc, pineLeafMat, i + t * 0.8)
+        }
+      }
+
+      tree.rotation.y = i * 1.37
+      tree.rotation.z = Math.sin(i * 2.1) * 0.035
       tree.position.set(tx, -2, tz)
       earthSceneGroup.add(tree)
     }
@@ -1481,9 +1792,13 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
     armMid.position.set(-3.8, 12, 0)
     towerGroup.add(armMid)
 
-    // Top Lightning Arrestor Mast & Red Aviation Beacon Light
-    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.16, 5.5, 10), towerWhiteMat)
-    mast.position.set(0, 38.5, 0)
+    // Top Lightning Arrestor Mast & Red Aviation Beacon Light (seated flush into top deck/elevator shaft)
+    const mastCollar = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.44, 0.6, 12), steelMat)
+    mastCollar.position.set(0, 35.15, 0)
+    towerGroup.add(mastCollar)
+
+    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.18, 7.2, 10), towerWhiteMat)
+    mast.position.set(0, 37.65, 0)
     towerGroup.add(mast)
 
     const beaconLight = new THREE.Mesh(
@@ -1850,7 +2165,7 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
         currentBg.copy(daySkyColor)
         scene.background = currentBg
         expFog.color.copy(daySkyColor)
-        expFog.density = 0.0012
+        expFog.density = 0.0020
         starMat.opacity = 0 // Invisible in daytime sunlight
 
         rocketGroup.position.set(0, 10, 0)
@@ -1924,7 +2239,7 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
         currentBg.lerpColors(daySkyColor, spaceBlack, spaceLerp)
         scene.background = currentBg
         expFog.color.lerpColors(daySkyColor, spaceBlack, spaceLerp)
-        expFog.density = 0.0012 * (1 - spaceLerp) + 0.0006 * spaceLerp
+        expFog.density = 0.0020 * (1 - spaceLerp) + 0.0006 * spaceLerp
         starMat.opacity = spaceLerp * 0.9 // Stars appear in space
 
         // CAMERA LIFTS OFF WITH ROCKET AND SMOOTHLY ENTERS COCKPIT WINDOW!
@@ -2162,11 +2477,7 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
   }
 
   const finishFlight = () => {
-    try {
-      sessionStorage.setItem('marsment_rocket_launched', 'true')
-    } catch {
-      // ignore
-    }
+    hasCompletedThisPageLoad = true
     document.body.style.overflow = ''
     document.documentElement.style.overflow = ''
     setDismissed(true)

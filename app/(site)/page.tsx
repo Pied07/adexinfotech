@@ -4,6 +4,7 @@ import { CTA } from '@/components/Blocks'
 import { HomeServicesCarousel } from '@/components/HomeServicesCarousel'
 import { AnimatedCounter } from '@/components/AnimatedCounter'
 import { HeroMarsGlobe } from '@/components/HeroMarsGlobe'
+import { CertificateBadges, type CertificateItem } from '@/components/CertificateBadges'
 import { getServices, getSettings, mediaURL } from '@/lib/cms'
 import { serviceSlug, starterServices } from '@/lib/starter-services'
 
@@ -14,12 +15,73 @@ const serviceImages = [
 ]
 
 export default async function Home() {
-  const [settings, cmsServices] = await Promise.all([getSettings(), getServices(15)])
+  const [rawSettings, cmsServices] = await Promise.all([getSettings(), getServices(15)])
+  const settings = rawSettings as Record<string, unknown> | null
   const services = cmsServices.length ? cmsServices : starterServices.map((service) => ({ ...service, slug: serviceSlug(service.title) }))
-  const name = settings?.businessName || process.env.NEXT_PUBLIC_BUSINESS_NAME || 'MARSMENT'
-  const heroImage = mediaURL(settings?.heroImage) || process.env.NEXT_PUBLIC_HERO_IMAGE_URL
+  const name = (settings?.businessName as string) || process.env.NEXT_PUBLIC_BUSINESS_NAME || 'MARSMENT'
   const aboutImage = mediaURL(settings?.aboutImage) || process.env.NEXT_PUBLIC_ABOUT_IMAGE_URL
-  const logo = mediaURL(settings?.logo)
+  const certificates = (settings?.certificates as CertificateItem[] | undefined) || undefined
+
+  const tickerItems =
+    Array.isArray(settings?.heroTickerItems) && settings.heroTickerItems.length
+      ? (settings.heroTickerItems as Array<{ label?: string }>).map((t) => t.label || '').filter(Boolean)
+      : [
+          'FULL-STACK ARCHITECTURE',
+          'SAAS SYSTEMS',
+          'AI & MACHINE LEARNING',
+          'PERFORMANCE MARKETING',
+          'SEARCH OPTIMIZATION',
+        ]
+
+  const introMetrics =
+    Array.isArray(settings?.introMetrics) && settings.introMetrics.length
+      ? (settings.introMetrics as Array<{ value?: number; suffix?: string; label?: string }>)
+      : [
+          { value: 15, suffix: '+', label: 'Specialized Capabilities' },
+          { value: 100, suffix: '%', label: 'Custom Built Code' },
+          { value: 24, suffix: '/7', label: 'Mission Telemetry' },
+        ]
+
+  const studioHighlights =
+    Array.isArray(settings?.studioHighlights) && settings.studioHighlights.length
+      ? (settings.studioHighlights as Array<{ title?: string; description?: string }>)
+      : [
+          {
+            title: 'Zero Template Compromise',
+            description: 'Bespoke architectures precision-tailored to your exact business objectives.',
+          },
+          {
+            title: 'High Velocity Deployment',
+            description: 'Rapid iteration cycles that get your solution into orbit faster.',
+          },
+        ]
+
+  const processStageIcons = [Compass, Layers, Rocket, Activity]
+  const processStages =
+    Array.isArray(settings?.processStages) && settings.processStages.length
+      ? (settings.processStages as Array<{ step?: string; title?: string; description?: string }>)
+      : [
+          {
+            step: 'STAGE 01',
+            title: 'Recon & Strategy',
+            description: 'We map competitive terrain, interrogate core requirements, and define rigorous technical telemetry before a single line of code is committed.',
+          },
+          {
+            step: 'STAGE 02',
+            title: 'Architecture & Design',
+            description: 'Systems are drafted with obsessive precision. We construct ergonomic UI systems, rock-solid database schemas, and lightning-fast user pathways.',
+          },
+          {
+            step: 'STAGE 03',
+            title: 'Propulsion & Build',
+            description: 'Our engineers synthesize full-stack solutions, integrate third-party APIs, configure secure infrastructure, and stress-test performance.',
+          },
+          {
+            step: 'STAGE 04',
+            title: 'Orbit & Expansion',
+            description: 'Flawless production launch followed by data-driven search optimization, paid media acceleration, and continuous feature evolution.',
+          },
+        ]
 
   return (
     <main className="home-mars-page">
@@ -35,16 +97,16 @@ export default async function Home() {
           <div className="home-hero-copy" data-reveal>
             <div className="mars-eyebrow">
               <span className="eyebrow-beacon" />
-              <span>MISSION BRIEFING • EXPEDITION 01</span>
+              <span>{(settings?.heroEyebrow as string) || 'MISSION BRIEFING • EXPEDITION 01'}</span>
             </div>
 
             <h1 className="hero-title">
-              Engineering <span className="text-white">Velocity</span><br />
-              <span className="text-mars">Beyond Boundaries.</span>
+              {(settings?.heroTitle as string) || <>Engineering <span className="text-white">Velocity</span></>}<br />
+              <span className="text-mars">{(settings?.heroAccent as string) || 'Beyond Boundaries.'}</span>
             </h1>
 
             <p className="home-hero-description">
-              {settings?.heroDescription || 'We architect resilient web applications, intelligent software ecosystems, and high-impact growth marketing designed to conquer new frontiers.'}
+              {(settings?.heroDescription as string) || 'We architect resilient web applications, intelligent software ecosystems, and high-impact growth marketing designed to conquer new frontiers.'}
             </p>
 
             <div className="home-hero-actions">
@@ -59,12 +121,14 @@ export default async function Home() {
             </div>
 
             <div className="home-hero-foot">
+              <CertificateBadges certificates={certificates} variant="hero" />
+              <span className="hero-foot-sep">/</span>
               <div className="hero-telemetry-tag">
                 <span className="tag-dot" />
-                <span>ORBITAL SPEED: 11.2 KM/S</span>
+                <span>{(settings?.heroOrbitalSpeed as string) || 'ORBITAL SPEED: 11.2 KM/S'}</span>
               </div>
               <span className="hero-foot-sep">/</span>
-              <span className="hero-foot-motto">Precision Strategy. Interplanetary Impact.</span>
+              <span className="hero-foot-motto">{(settings?.heroMotto as string) || 'Precision Strategy. Interplanetary Impact.'}</span>
             </div>
           </div>
 
@@ -112,11 +176,11 @@ export default async function Home() {
         {/* Ticker / Horizon Bar */}
         <div className="hero-bottom-rule">
           <div className="container hero-ticker-inner">
-            <span className="ticker-item"><span className="dot-cyan" /> FULL-STACK ARCHITECTURE</span>
-            <span className="ticker-item"><span className="dot-orange" /> SAAS SYSTEMS</span>
-            <span className="ticker-item"><span className="dot-cyan" /> AI & MACHINE LEARNING</span>
-            <span className="ticker-item"><span className="dot-orange" /> PERFORMANCE MARKETING</span>
-            <span className="ticker-item"><span className="dot-cyan" /> SEARCH OPTIMIZATION</span>
+            {tickerItems.map((item, idx) => (
+              <span className="ticker-item" key={idx}>
+                <span className={idx % 2 === 0 ? 'dot-cyan' : 'dot-orange'} /> {item}
+              </span>
+            ))}
           </div>
         </div>
       </section>
@@ -127,34 +191,32 @@ export default async function Home() {
           <div data-reveal>
             <div className="mars-eyebrow">
               <span className="eyebrow-beacon" />
-              <span>THE MARSMENT STANDARD</span>
+              <span>{(settings?.introEyebrow as string) || `THE ${name.toUpperCase()} STANDARD`}</span>
             </div>
             <h2 className="section-title">
-              We bring the<br />
-              <span className="text-mars">whole mission</span><br />
-              into focus.
+              {(settings?.introTitle as string) || 'We bring the'}<br />
+              <span className="text-mars">{(settings?.introAccent as string) || 'whole mission'}</span><br />
+              {(settings?.introTitleEnd as string) || 'into focus.'}
             </h2>
           </div>
           <div className="home-intro-copy" data-reveal>
             <p className="body-lead">
-              Every ambitious venture demands an extraordinary leap. {name} fuses bold visual identity, state-of-the-art engineering, and razor-sharp market traction to propel your company far ahead of the competition.
+              {(settings?.introLead as string) || `Every ambitious venture demands an extraordinary leap. ${name} fuses bold visual identity, state-of-the-art engineering, and razor-sharp market traction to propel your company far ahead of the competition.`}
             </p>
             <div className="intro-metrics-row">
-              <div className="metric-cell">
-                <AnimatedCounter target={15} suffix="+" className="text-white" />
-                <span>Specialized Capabilities</span>
-              </div>
-              <div className="metric-cell">
-                <AnimatedCounter target={100} suffix="%" className="text-cyan" />
-                <span>Custom Built Code</span>
-              </div>
-              <div className="metric-cell">
-                <AnimatedCounter target={24} suffix="/7" className="text-orange" />
-                <span>Mission Telemetry</span>
-              </div>
+              {introMetrics.map((m, idx) => (
+                <div className="metric-cell" key={idx}>
+                  <AnimatedCounter
+                    target={Number(m.value ?? 0)}
+                    suffix={m.suffix || ''}
+                    className={idx === 0 ? 'text-white' : idx === 1 ? 'text-cyan' : 'text-orange'}
+                  />
+                  <span>{m.label}</span>
+                </div>
+              ))}
             </div>
             <Link href="/about" className="editorial-link">
-              <span>Read the MARSMENT Manifesto</span>
+              <span>Read the {name} Manifesto</span>
               <ArrowUpRight size={15} aria-hidden="true" />
             </Link>
           </div>
@@ -169,15 +231,15 @@ export default async function Home() {
             <div>
               <div className="mars-eyebrow">
                 <span className="eyebrow-beacon" />
-                <span>CAPABILITIES IN ORBIT</span>
+                <span>{(settings?.servicesEyebrow as string) || 'CAPABILITIES IN ORBIT'}</span>
               </div>
               <h2 className="section-title">
-                One unified crew.<br />
-                <span className="text-mars">Every technical advantage.</span>
+                {(settings?.servicesHeading as string) || 'One unified crew.'}<br />
+                <span className="text-mars">{(settings?.servicesHeadingAccent as string) || 'Every technical advantage.'}</span>
               </h2>
             </div>
             <p className="section-subtitle">
-              From initial atmospheric lift-off to planetary dominance, our interdisciplinary capabilities deliver unwavering speed, security and measurable business growth.
+              {(settings?.servicesSubtitle as string) || 'From initial atmospheric lift-off to planetary dominance, our interdisciplinary capabilities deliver unwavering speed, security and measurable business growth.'}
             </p>
           </div>
 
@@ -221,29 +283,29 @@ export default async function Home() {
         <div className="studio-copy-col" data-reveal>
           <div className="mars-eyebrow">
             <span className="eyebrow-beacon" />
-            <span>MISSION ETHOS</span>
+            <span>{(settings?.studioEyebrow as string) || 'MISSION ETHOS'}</span>
           </div>
           <h2 className="section-title">
-            Groundbreaking work is<br />
-            an <span className="text-mars">orbital discipline.</span>
+            {(settings?.studioHeading as string) || 'Groundbreaking work is'}<br />
+            <span className="text-mars">{(settings?.studioHeadingAccent as string) || 'an orbital discipline.'}</span>
           </h2>
           <p className="studio-paragraph">
-            We operate at the nexus of imaginative design and battle-tested engineering. By removing friction, automating repetitive bottlenecks, and crafting breathtaking user touchpoints, we transform complex enterprise challenges into clear, unstoppable momentum.
+            {(settings?.studioDescription as string) || 'We operate at the nexus of imaginative design and battle-tested engineering. By removing friction, automating repetitive bottlenecks, and crafting breathtaking user touchpoints, we transform complex enterprise challenges into clear, unstoppable momentum.'}
           </p>
           <div className="studio-highlights-list">
-            <div className="highlight-item">
-              <span className="highlight-icon"><Sparkles size={16} /></span>
-              <div>
-                <strong>Zero Template Compromise</strong>
-                <small>Bespoke architectures precision-tailored to your exact business objectives.</small>
+            {studioHighlights.map((item, idx) => (
+              <div className="highlight-item" key={idx}>
+                <span className="highlight-icon">
+                  {idx % 2 === 0 ? <Sparkles size={16} /> : <Terminal size={16} />}
+                </span>
+                <div>
+                  <strong>{item.title}</strong>
+                  <small>{item.description}</small>
+                </div>
               </div>
-            </div>
+            ))}
             <div className="highlight-item">
-              <span className="highlight-icon"><Terminal size={16} /></span>
-              <div>
-                <strong>High Velocity Deployment</strong>
-                <small>Rapid iteration cycles that get your solution into orbit faster.</small>
-              </div>
+              <CertificateBadges certificates={certificates} variant="full" />
             </div>
           </div>
           <Link className="studio-action-link" href="/about">
@@ -260,57 +322,35 @@ export default async function Home() {
             <div>
               <div className="mars-eyebrow">
                 <span className="eyebrow-beacon" />
-                <span>FLIGHT PROTOCOL</span>
+                <span>{(settings?.processEyebrow as string) || 'FLIGHT PROTOCOL'}</span>
               </div>
               <h2 className="section-title">
-                The four stages of<br />
-                <span className="text-mars">interplanetary execution.</span>
+                {(settings?.processHeading as string) || 'The four stages of'}<br />
+                <span className="text-mars">{(settings?.processHeadingAccent as string) || 'interplanetary execution.'}</span>
               </h2>
             </div>
             <p className="section-subtitle">
-              A transparent, battle-tested launch sequence from initial recon to sustainable orbital velocity.
+              {(settings?.processSubtitle as string) || 'A transparent, battle-tested launch sequence from initial recon to sustainable orbital velocity.'}
             </p>
           </div>
 
           <div className="process-grid">
-            {[
-              {
-                step: 'STAGE 01',
-                title: 'Recon & Strategy',
-                icon: Compass,
-                desc: 'We map competitive terrain, interrogate core requirements, and define rigorous technical telemetry before a single line of code is committed.',
-              },
-              {
-                step: 'STAGE 02',
-                title: 'Architecture & Design',
-                icon: Layers,
-                desc: 'Systems are drafted with obsessive precision. We construct ergonomic UI systems, rock-solid database schemas, and lightning-fast user pathways.',
-              },
-              {
-                step: 'STAGE 03',
-                title: 'Propulsion & Build',
-                icon: Rocket,
-                desc: 'Our engineers synthesize full-stack solutions, integrate third-party APIs, configure secure infrastructure, and stress-test performance.',
-              },
-              {
-                step: 'STAGE 04',
-                title: 'Orbit & Expansion',
-                icon: Activity,
-                desc: 'Flawless production launch followed by data-driven search optimization, paid media acceleration, and continuous feature evolution.',
-              },
-            ].map(({ step, title, icon: Icon, desc }, i) => (
-              <article className="process-card" key={step} data-reveal style={{ '--card-delay': `${i * 90}ms` } as React.CSSProperties}>
-                <div className="process-card-top">
-                  <span className="process-step-badge">{step}</span>
-                  <div className="process-card-icon">
-                    <Icon size={20} />
+            {processStages.map((stageItem, i) => {
+              const Icon = processStageIcons[i % processStageIcons.length]
+              return (
+                <article className="process-card" key={stageItem.step || i} data-reveal style={{ '--card-delay': `${i * 90}ms` } as React.CSSProperties}>
+                  <div className="process-card-top">
+                    <span className="process-step-badge">{stageItem.step}</span>
+                    <div className="process-card-icon">
+                      <Icon size={20} />
+                    </div>
                   </div>
-                </div>
-                <h3 className="process-card-title">{title}</h3>
-                <p className="process-card-desc">{desc}</p>
-                <div className="process-card-glow-bar" />
-              </article>
-            ))}
+                  <h3 className="process-card-title">{stageItem.title}</h3>
+                  <p className="process-card-desc">{stageItem.description}</p>
+                  <div className="process-card-glow-bar" />
+                </article>
+              )
+            })}
           </div>
         </div>
       </section>
@@ -324,15 +364,14 @@ export default async function Home() {
               <Sparkles size={28} className="text-cyan" />
             </span>
             <p className="note-headline">
-              Less static.<br />
-              <em className="text-mars">Maximum velocity.</em>
+              {(settings?.transmissionHeadline as string) || 'Less static.'}<br />
+              <em className="text-mars">{(settings?.transmissionAccent as string) || 'Maximum velocity.'}</em>
             </p>
           </div>
           <div className="note-right">
-            <span className="note-side-label">MARS TRANSMISSION 01</span>
+            <span className="note-side-label">{(settings?.transmissionLabel as string) || 'MARS TRANSMISSION 01'}</span>
             <p className="note-side-copy">
-              A clearer trajectory begins with a direct transmission.<br />
-              Our launchpad is primed for your project.
+              {(settings?.transmissionCopy as string) || 'A clearer trajectory begins with a direct transmission. Our launchpad is primed for your project.'}
             </p>
             <Link href="/contact" className="button button-mars-quote">
               <span>Initiate Transmission</span>
