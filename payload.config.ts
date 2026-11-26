@@ -58,6 +58,9 @@ export default buildConfig({
       keepAlive: true,
       max: 5,
     },
+    // Never prompt for an interactive schema push inside a web request. This
+    // also prevents data-loss schema changes from being applied at runtime.
+    push: false,
     prodMigrations: migrations,
   }),
   typescript: { outputFile: 'payload-types.ts' },
