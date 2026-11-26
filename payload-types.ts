@@ -841,10 +841,16 @@ export interface SiteSetting {
   seoTitle?: string | null;
   seoDescription?: string | null;
   /**
-   * Background image for the 404 "lost cave" page. Falls back to the default cave image when empty.
+   * Background image for the 404 "lost cave" page. Recommended: dark atmospheric photo (min 1920×1080). Falls back to the default cave image when empty.
    */
   notFoundBg?: (number | null) | Media;
+  /**
+   * Main heading on the 404 page (shown with letter animations).
+   */
   notFoundHeading?: string | null;
+  /**
+   * Subtitle shown beneath the heading.
+   */
   notFoundSubtext?: string | null;
   updatedAt?: string | null;
   createdAt?: string | null;
