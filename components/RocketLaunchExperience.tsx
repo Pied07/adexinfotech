@@ -2259,30 +2259,37 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
     // 360-Degree Interactive Mouse Hover & Touch Drag Look-Around
     // (Explore Earth mountains/sky & Mars canyons/boulders in full 360!)
     // =======================================================================
+    container.style.touchAction = 'none'
     const lookState = {
       yaw: 0,
       pitch: 0,
       targetYaw: 0,
       targetPitch: 0,
+      velYaw: 0,
+      velPitch: 0,
       isPointerDown: false,
       lastPointerX: 0,
       lastPointerY: 0,
     }
 
     const handlePointerMove = (e: PointerEvent) => {
-      const nx = (e.clientX / window.innerWidth) * 2 - 1
-      const ny = (e.clientY / window.innerHeight) * 2 - 1
-
       if (lookState.isPointerDown) {
-        // Drag swipe rotation (desktop mouse drag & mobile touch swipe)
+        // Fast, responsive drag/swipe rotation (higher sensitivity on touch screens)
         const dx = e.clientX - lookState.lastPointerX
         const dy = e.clientY - lookState.lastPointerY
-        lookState.targetYaw += dx * 0.005
-        lookState.targetPitch = Math.max(-0.55, Math.min(0.65, lookState.targetPitch - dy * 0.005))
+        const sens = e.pointerType === 'mouse' ? 0.0075 : 0.0125
+        const dYaw = dx * sens
+        const dPitch = -dy * sens * 0.85
+        lookState.targetYaw += dYaw
+        lookState.targetPitch = Math.max(-0.55, Math.min(0.65, lookState.targetPitch + dPitch))
+        lookState.velYaw = dYaw
+        lookState.velPitch = dPitch
         lookState.lastPointerX = e.clientX
         lookState.lastPointerY = e.clientY
-      } else {
-        // Natural mouse hover panning
+      } else if (e.pointerType === 'mouse') {
+        // Natural mouse hover panning (desktop only)
+        const nx = (e.clientX / window.innerWidth) * 2 - 1
+        const ny = (e.clientY / window.innerHeight) * 2 - 1
         lookState.targetYaw = nx * 0.95
         lookState.targetPitch = -ny * 0.45
       }
@@ -2290,6 +2297,8 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
 
     const handlePointerDown = (e: PointerEvent) => {
       lookState.isPointerDown = true
+      lookState.velYaw = 0
+      lookState.velPitch = 0
       lookState.lastPointerX = e.clientX
       lookState.lastPointerY = e.clientY
     }
@@ -2301,6 +2310,7 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
     window.addEventListener('pointermove', handlePointerMove, { passive: true })
     window.addEventListener('pointerdown', handlePointerDown, { passive: true })
     window.addEventListener('pointerup', handlePointerUp, { passive: true })
+    window.addEventListener('pointercancel', handlePointerUp, { passive: true })
 
     // =======================================================================
     // 7. REAL-TIME 60FPS ANIMATION LOOP (Synchronized via flightProgressRef)
@@ -2314,9 +2324,16 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
       const curStage = stageRef.current
       const currentFlightP = flightProgressRef.current // Real-time 0.0 -> 1.0
 
-      // Smooth look-around damping
-      lookState.yaw = THREE.MathUtils.lerp(lookState.yaw, lookState.targetYaw, delta * 3.5)
-      lookState.pitch = THREE.MathUtils.lerp(lookState.pitch, lookState.targetPitch, delta * 3.5)
+      // Smooth inertia after touch/drag release + responsive damping
+      if (!lookState.isPointerDown && (Math.abs(lookState.velYaw) > 0.0002 || Math.abs(lookState.velPitch) > 0.0002)) {
+        lookState.targetYaw += lookState.velYaw
+        lookState.targetPitch = Math.max(-0.55, Math.min(0.65, lookState.targetPitch + lookState.velPitch))
+        lookState.velYaw *= 0.91
+        lookState.velPitch *= 0.91
+      }
+      const damp = Math.min(1, delta * (lookState.isPointerDown ? 15 : 7))
+      lookState.yaw = THREE.MathUtils.lerp(lookState.yaw, lookState.targetYaw, damp)
+      lookState.pitch = THREE.MathUtils.lerp(lookState.pitch, lookState.targetPitch, damp)
       const yaw = lookState.yaw
       const pitch = THREE.MathUtils.clamp(lookState.pitch, -0.55, 0.65)
 
@@ -2586,6 +2603,7 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
       window.removeEventListener('pointermove', handlePointerMove)
       window.removeEventListener('pointerdown', handlePointerDown)
       window.removeEventListener('pointerup', handlePointerUp)
+      window.removeEventListener('pointercancel', handlePointerUp)
       renderer.dispose()
       if (container.contains(renderer.domElement)) {
         container.removeChild(renderer.domElement)
