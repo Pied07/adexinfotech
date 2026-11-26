@@ -61,6 +61,22 @@ export async function getSettings() {
   try { return await payload.findGlobal({ slug: 'site-settings', depth: 2 }) } catch { return null }
 }
 
+/** Keep a missing-page response available even when the CMS is slow to start. */
+export async function getNotFoundSettings() {
+  let timeout: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([
+      getSettings(),
+      new Promise<null>((resolve) => {
+        timeout = setTimeout(() => resolve(null), 2_500)
+        timeout.unref?.()
+      }),
+    ])
+  } finally {
+    if (timeout) clearTimeout(timeout)
+  }
+}
+
 export async function getServices(limit = 100) {
   const payload = await getCMS()
   if (!payload) return []
