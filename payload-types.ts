@@ -840,6 +840,12 @@ export interface SiteSetting {
   } | null;
   seoTitle?: string | null;
   seoDescription?: string | null;
+  /**
+   * Background image for the 404 "lost cave" page. Falls back to the default cave image when empty.
+   */
+  notFoundBg?: (number | null) | Media;
+  notFoundHeading?: string | null;
+  notFoundSubtext?: string | null;
   updatedAt?: string | null;
   createdAt?: string | null;
 }
@@ -987,6 +993,9 @@ export interface SiteSettingsSelect<T extends boolean = true> {
   terms?: T;
   seoTitle?: T;
   seoDescription?: T;
+  notFoundBg?: T;
+  notFoundHeading?: T;
+  notFoundSubtext?: T;
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;

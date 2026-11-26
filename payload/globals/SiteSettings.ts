@@ -284,6 +284,32 @@ export const SiteSettings: GlobalConfig = {
             { name: 'seoDescription', type: 'textarea' },
           ],
         },
+        {
+          label: '404 Page',
+          fields: [
+            {
+              name: 'notFoundBg',
+              type: 'upload',
+              relationTo: 'media',
+              admin: {
+                description:
+                  'Background image for the 404 "lost cave" page. Recommended: dark atmospheric photo (min 1920×1080). Falls back to the default cave image when empty.',
+              },
+            },
+            {
+              name: 'notFoundHeading',
+              type: 'text',
+              defaultValue: 'Page not found',
+              admin: { description: 'Main heading on the 404 page (shown with letter animations).' },
+            },
+            {
+              name: 'notFoundSubtext',
+              type: 'text',
+              defaultValue: "You've wandered too deep. This path doesn't exist.",
+              admin: { description: 'Subtitle shown beneath the heading.' },
+            },
+          ],
+        },
       ],
     },
   ],

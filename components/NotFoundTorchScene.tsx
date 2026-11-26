@@ -29,7 +29,14 @@ const LETTERS: Array<{ char: string; cls?: string }> = [
   { char: 'd', cls: 'lt-alive' },
 ]
 
-export function NotFoundTorchScene() {
+interface NotFoundTorchSceneProps {
+  /** URL of the background image. Falls back to the static cave photo. */
+  bgUrl?: string
+  /** Subtitle copy. Falls back to the default cave line. */
+  subtext?: string
+}
+
+export function NotFoundTorchScene({ bgUrl, subtext }: NotFoundTorchSceneProps) {
   const maskRef  = useRef<HTMLDivElement | null>(null)
   const bloomRef = useRef<HTMLDivElement | null>(null)
 
@@ -90,9 +97,17 @@ export function NotFoundTorchScene() {
     }
   }, [])
 
+  // The CSS has the default cave image hardcoded.
+  // When an admin-supplied URL is present we override it via inline style.
+  const bgStyle = bgUrl
+    ? { backgroundImage: `url('${bgUrl}')` }
+    : undefined
+
+  const subtextCopy = subtext?.trim() || "You've wandered too deep. This path doesn't exist."
+
   return (
     <main className="nf-root" aria-label="404 — Page not found">
-      <div className="nf-bg" />
+      <div className="nf-bg" style={bgStyle} />
       <div ref={maskRef} className="nf-mask" />
       <div ref={bloomRef} className="nf-bloom" />
 
@@ -111,9 +126,8 @@ export function NotFoundTorchScene() {
           )}
         </h1>
 
-        <p className="nf-sub">
-          You&rsquo;ve wandered too deep. This path doesn&rsquo;t exist.
-        </p>
+        <p className="nf-sub">{subtextCopy}</p>
+
         <Link href="/" className="nf-btn">
           ← Back to Home
         </Link>

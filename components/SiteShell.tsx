@@ -5,7 +5,9 @@ import { getSettings, mediaURL } from '@/lib/cms'
 import { ScrollReveal } from '@/components/ScrollReveal'
 import { MobileNav } from '@/components/MobileNav'
 import { PageTransition } from '@/components/PageTransition'
-import { RocketLaunchExperience } from '@/components/RocketLaunchExperience'
+// RocketLaunchExperienceClient is a 'use client' wrapper that loads the rocket
+// with next/dynamic ssr:false — that flag is only allowed in Client Components.
+import { RocketLaunchExperienceClient } from '@/components/RocketLaunchExperienceClient'
 import { ConditionalReplayButton } from '@/components/ConditionalReplayButton'
 import { FloatingWhatsApp } from '@/components/FloatingWhatsApp'
 
@@ -22,7 +24,7 @@ export async function SiteShell({ children }: { children: ReactNode }) {
   return (
     <div className="mars-theme-root">
       {/* Full-Screen Interactive Rocket Launch Experience */}
-      <RocketLaunchExperience />
+      <RocketLaunchExperienceClient />
 
       {/* Space Topline */}
       <div className="topline">
