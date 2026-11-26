@@ -1278,8 +1278,8 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
     // Multi-biome helper: < 0.48 = Lush Meadow Grass, 0.48..0.66 = Rocky Slate/Granite, >= 0.66 = Alpine Snow
     const getEarthBiome = (x: number, z: number) => fbm3(x * 0.022 + 1.4, 0.3, z * 0.022 - 0.9, 3)
 
-    // Subtle multi-biome ground plane with vertex colors (grass, rock, snow) + bump detail
-    const groundGeo = new THREE.PlaneGeometry(360, 360, 64, 64)
+    // Subtle multi-biome ground plane with vertex colors (grass spots, rock/soil ground, snow) + bump detail
+    const groundGeo = new THREE.PlaneGeometry(360, 360, 44, 44)
     groundGeo.rotateX(-Math.PI / 2)
     const gPos = groundGeo.attributes.position
     const gColors = new Float32Array(gPos.count * 3)
@@ -1289,20 +1289,20 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
       const dist = Math.hypot(vx, vz)
       const b = getEarthBiome(vx, vz)
       // Gentle natural terrain undulation outside the launch apron
-      const hill = dist > 26 ? Math.min(1, (dist - 26) / 30) * (b - 0.42) * 2.2 : 0
+      const hill = dist > 26 ? Math.min(1, (dist - 26) / 30) * (b - 0.42) * 2.4 : 0
       gPos.setY(i, -2 + hill)
 
-      if (b < 0.48) {
-        // Lush meadow green & dark soil
+      if (b < 0.38) {
+        // Lush meadow green & dark soil spots
         gColors[i * 3] = 0.16
-        gColors[i * 3 + 1] = 0.28
+        gColors[i * 3 + 1] = 0.29
         gColors[i * 3 + 2] = 0.08
-      } else if (b < 0.66) {
-        // Weathered rocky slate/granite
-        const t = (b - 0.48) / 0.18
-        gColors[i * 3] = 0.28 + t * 0.12
-        gColors[i * 3 + 1] = 0.26 + t * 0.11
-        gColors[i * 3 + 2] = 0.24 + t * 0.12
+      } else if (b < 0.62) {
+        // Rich weathered rocky slate/earth ground
+        const t = (b - 0.38) / 0.24
+        gColors[i * 3] = 0.26 + t * 0.14
+        gColors[i * 3 + 1] = 0.24 + t * 0.12
+        gColors[i * 3 + 2] = 0.21 + t * 0.13
       } else {
         // Crisp alpine snow with cool shadow undertone
         gColors[i * 3] = 0.84
@@ -1424,12 +1424,12 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
         const tipC = [0.09, 0.28, 0.04]
         colors.push(...rootC, ...rootC, ...tipC)
       }
-      for (let b = 0; b < 14; b++) {
-        const bAng = (b / 14) * Math.PI * 2 + (b % 3) * 0.41
-        const spread = 0.08 + (b % 5) * 0.14
+      for (let b = 0; b < 10; b++) {
+        const bAng = (b / 10) * Math.PI * 2 + (b % 3) * 0.41
+        const spread = 0.08 + (b % 4) * 0.14
         const ox = Math.cos(bAng) * spread
         const oz = Math.sin(bAng) * spread
-        const bh = 0.85 + (b % 4) * 0.22
+        const bh = 0.8 + (b % 4) * 0.2
         const bw = 0.18 + (b % 3) * 0.03
         const bLean = 0.12 + (b % 4) * 0.05
         addBlade(bAng + 0.5, ox, oz, bh, bw, bLean)
@@ -1449,19 +1449,19 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
       metalness: 0.0,
       side: THREE.DoubleSide,
     })
-    const maxGrass = 2400
+    const maxGrass = 350
     const grassInst = new THREE.InstancedMesh(grassGeo, grassMat, maxGrass)
     const dummy = new THREE.Object3D()
     const gArr = grassInst.instanceMatrix.array as Float32Array
     let placedGrass = 0
-    for (let i = 0; i < 6500 && placedGrass < maxGrass; i++) {
+    for (let i = 0; i < 2400 && placedGrass < maxGrass; i++) {
       const ang = (i * 2.399963) % (Math.PI * 2)
-      const r = 22.8 + Math.sqrt((i % 6500) / 6500) * 70 + Math.sin(i * 1.7) * 1.6
+      const r = 23 + Math.sqrt((i % 2400) / 2400) * 66 + Math.sin(i * 1.7) * 1.6
       const gx = Math.cos(ang) * r
       const gz = Math.sin(ang) * r
       if (ponds.some((p) => Math.hypot(gx - p.x, gz - p.z) < p.r + 1.4)) continue
       const b = getEarthBiome(gx, gz)
-      if (b >= 0.45) continue // Keep rocky & snowy zones free of grass
+      if (b >= 0.36) continue // Grass only in a few natural meadow spots
       const hillY = r > 26 ? Math.min(1, (r - 26) / 30) * (b - 0.42) * 2.2 : 0
       const rot = (i * 1.7) % (Math.PI * 2)
       const c = Math.cos(rot)
@@ -1508,19 +1508,19 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
       metalness: 0.04,
       flatShading: true,
     })
-    const rockInst = new THREE.InstancedMesh(rockGeo, rockMat, 320)
+    const rockInst = new THREE.InstancedMesh(rockGeo, rockMat, 65)
     rockInst.castShadow = true
     rockInst.receiveShadow = true
     let placedRocks = 0
-    for (let i = 0; i < 950 && placedRocks < 320; i++) {
+    for (let i = 0; i < 320 && placedRocks < 65; i++) {
       const ang = (i * 2.399963 + 0.3) % (Math.PI * 2)
-      const r = 25 + Math.sqrt((i % 950) / 950) * 78
+      const r = 25 + Math.sqrt((i % 320) / 320) * 76
       const rx = Math.cos(ang) * r
       const rz = Math.sin(ang) * r
       const b = getEarthBiome(rx, rz)
-      if (b < 0.45) continue
+      if (b < 0.42) continue
       const hillY = r > 26 ? Math.min(1, (r - 26) / 30) * (b - 0.42) * 2.2 : 0
-      const sc = 0.55 + ((i * 7) % 10) * 0.24
+      const sc = 0.6 + ((i * 7) % 10) * 0.24
       dummy.position.set(rx, -2 + hillY + sc * 0.22, rz)
       dummy.rotation.set((i % 5) * 0.3, i * 1.1, (i % 3) * 0.25)
       dummy.scale.set(sc * 1.25, sc * 0.75, sc)
@@ -1539,18 +1539,18 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
       roughness: 0.78,
       metalness: 0.02,
     })
-    const snowInst = new THREE.InstancedMesh(snowDriftGeo, snowDriftMat, 180)
+    const snowInst = new THREE.InstancedMesh(snowDriftGeo, snowDriftMat, 45)
     snowInst.receiveShadow = true
     let placedSnow = 0
-    for (let i = 0; i < 800 && placedSnow < 180; i++) {
+    for (let i = 0; i < 240 && placedSnow < 45; i++) {
       const ang = (i * 2.399963 + 1.2) % (Math.PI * 2)
-      const r = 27 + Math.sqrt((i % 800) / 800) * 74
+      const r = 27 + Math.sqrt((i % 240) / 240) * 72
       const sx = Math.cos(ang) * r
       const sz = Math.sin(ang) * r
       const b = getEarthBiome(sx, sz)
-      if (b < 0.65) continue
+      if (b < 0.62) continue
       const hillY = r > 26 ? Math.min(1, (r - 26) / 30) * (b - 0.42) * 2.2 : 0
-      const sc = 0.9 + (i % 5) * 0.45
+      const sc = 1.0 + (i % 5) * 0.45
       dummy.position.set(sx, -2.05 + hillY, sz)
       dummy.rotation.set(0, i * 0.85, 0)
       dummy.scale.set(sc, sc * 0.7, sc)
@@ -1561,21 +1561,21 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
     snowInst.instanceMatrix.needsUpdate = true
     earthSceneGroup.add(snowInst)
 
-    // Instanced Meadow Wildflowers (in Grass Biome only)
+    // Instanced Meadow Wildflowers (in Grass spots only)
     const flowerGeo = new THREE.OctahedronGeometry(0.16, 0)
     flowerGeo.scale(1.1, 0.45, 1.1)
     const flowerMat = new THREE.MeshStandardMaterial({ roughness: 0.7, metalness: 0.02 })
-    const flowerCount = 320
+    const flowerCount = 60
     const flowerInst = new THREE.InstancedMesh(flowerGeo, flowerMat, flowerCount)
     const flowerPalette = [new THREE.Color(0xfacc15), new THREE.Color(0x818cf8), new THREE.Color(0xf8fafc)]
     let placedFlowers = 0
-    for (let i = 0; i < 800 && placedFlowers < flowerCount; i++) {
+    for (let i = 0; i < 300 && placedFlowers < flowerCount; i++) {
       const ang = (i * 2.399963 + 0.5) % (Math.PI * 2)
-      const r = 24 + Math.sqrt((i % 800) / 800) * 74
+      const r = 24 + Math.sqrt((i % 300) / 300) * 70
       const fx = Math.cos(ang) * r
       const fz = Math.sin(ang) * r
       const b = getEarthBiome(fx, fz)
-      if (b >= 0.48) continue
+      if (b >= 0.36) continue
       const hillY = r > 26 ? Math.min(1, (r - 26) / 30) * (b - 0.42) * 2.2 : 0
       dummy.position.set(fx, -1.15 + hillY + (i % 3) * 0.12, fz)
       dummy.rotation.set(0, i * 0.9, 0)
@@ -1733,8 +1733,8 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
       }
     }
 
-    for (let i = 0; i < 58; i++) {
-      const ang = (i / 58) * Math.PI * 2 + (i % 5) * 0.05
+    for (let i = 0; i < 32; i++) {
+      const ang = (i / 32) * Math.PI * 2 + (i % 5) * 0.05
       // Keep the direct foreground camera corridor (around +Z) open
       if (Math.sin(ang) > 0.65 && Math.abs(Math.cos(ang)) < 0.45) continue
 
