@@ -1275,46 +1275,54 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
     // B. Hyper-Realistic Meadow Soil & Grass Ground + Concrete Launch Apron
     const earthConcrete = createEarthConcreteMaps()
 
-    // Procedural rich loam soil & mossy meadow ground texture
-    const meadowCanvas = document.createElement('canvas')
-    meadowCanvas.width = 512
-    meadowCanvas.height = 512
-    const mCtx = meadowCanvas.getContext('2d')!
-    mCtx.fillStyle = '#2c3d16'
-    mCtx.fillRect(0, 0, 512, 512)
-    for (let i = 0; i < 4500; i++) {
-      const px = Math.random() * 512
-      const py = Math.random() * 512
-      const r = 3 + Math.random() * 14
-      const patch = Math.random()
-      mCtx.fillStyle =
-        patch < 0.28
-          ? 'rgba(54, 40, 27, 0.45)' // rich dark soil loam
-          : patch < 0.65
-            ? 'rgba(40, 64, 20, 0.42)' // deep meadow moss
-            : 'rgba(66, 98, 28, 0.38)' // lush grass turf
-      mCtx.beginPath()
-      mCtx.arc(px, py, r, 0, Math.PI * 2)
-      mCtx.fill()
+    // Multi-biome helper: < 0.48 = Lush Meadow Grass, 0.48..0.66 = Rocky Slate/Granite, >= 0.66 = Alpine Snow
+    const getEarthBiome = (x: number, z: number) => fbm3(x * 0.022 + 1.4, 0.3, z * 0.022 - 0.9, 3)
+
+    // Subtle multi-biome ground plane with vertex colors (grass, rock, snow) + bump detail
+    const groundGeo = new THREE.PlaneGeometry(360, 360, 64, 64)
+    groundGeo.rotateX(-Math.PI / 2)
+    const gPos = groundGeo.attributes.position
+    const gColors = new Float32Array(gPos.count * 3)
+    for (let i = 0; i < gPos.count; i++) {
+      const vx = gPos.getX(i)
+      const vz = gPos.getZ(i)
+      const dist = Math.hypot(vx, vz)
+      const b = getEarthBiome(vx, vz)
+      // Gentle natural terrain undulation outside the launch apron
+      const hill = dist > 26 ? Math.min(1, (dist - 26) / 30) * (b - 0.42) * 2.2 : 0
+      gPos.setY(i, -2 + hill)
+
+      if (b < 0.48) {
+        // Lush meadow green & dark soil
+        gColors[i * 3] = 0.16
+        gColors[i * 3 + 1] = 0.28
+        gColors[i * 3 + 2] = 0.08
+      } else if (b < 0.66) {
+        // Weathered rocky slate/granite
+        const t = (b - 0.48) / 0.18
+        gColors[i * 3] = 0.28 + t * 0.12
+        gColors[i * 3 + 1] = 0.26 + t * 0.11
+        gColors[i * 3 + 2] = 0.24 + t * 0.12
+      } else {
+        // Crisp alpine snow with cool shadow undertone
+        gColors[i * 3] = 0.84
+        gColors[i * 3 + 1] = 0.89
+        gColors[i * 3 + 2] = 0.96
+      }
     }
-    const meadowTex = new THREE.CanvasTexture(meadowCanvas)
-    meadowTex.colorSpace = THREE.SRGBColorSpace
-    meadowTex.wrapS = THREE.RepeatWrapping
-    meadowTex.wrapT = THREE.RepeatWrapping
-    meadowTex.repeat.set(22, 22)
+    groundGeo.setAttribute('color', new THREE.BufferAttribute(gColors, 3))
+    groundGeo.computeVertexNormals()
 
     const groundMesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(600, 600),
+      groundGeo,
       new THREE.MeshStandardMaterial({
-        map: meadowTex,
+        vertexColors: true,
         bumpMap: earthConcrete.bumpMap,
-        bumpScale: 0.24,
-        roughness: 0.96,
-        metalness: 0.01,
+        bumpScale: 0.28,
+        roughness: 0.94,
+        metalness: 0.02,
       })
     )
-    groundMesh.rotation.x = -Math.PI / 2
-    groundMesh.position.y = -2
     groundMesh.receiveShadow = true
     earthSceneGroup.add(groundMesh)
 
@@ -1333,7 +1341,66 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
     concreteApron.receiveShadow = true
     earthSceneGroup.add(concreteApron)
 
-    // B1b. Ultra-Dense Instanced 3D Meadow Grass Carpet (~2.4 Million Grass Blades) & Wildflowers
+    // B1a. Realistic Small Water Ponds Nearby (with organic shoreline, pebbles & reflective water)
+    const ponds = [
+      { x: -30, z: 24, r: 8.5 },
+      { x: 32, z: 22, r: 7.2 },
+      { x: -25, z: -32, r: 9.0 },
+    ]
+    const waterMat = new THREE.MeshStandardMaterial({
+      color: 0x1a6e91,
+      roughness: 0.08,
+      metalness: 0.72,
+      transparent: true,
+      opacity: 0.9,
+    })
+    const pondBedMat = new THREE.MeshStandardMaterial({
+      color: 0x102a36,
+      roughness: 0.95,
+      metalness: 0.05,
+    })
+    const pondBankMat = new THREE.MeshStandardMaterial({
+      color: 0x4b4237,
+      roughness: 0.96,
+      metalness: 0.02,
+    })
+    for (const p of ponds) {
+      const pondGroup = new THREE.Group()
+      const waterGeo = new THREE.CircleGeometry(p.r, 28)
+      const wPos = waterGeo.attributes.position
+      for (let v = 1; v < wPos.count; v++) {
+        const vx = wPos.getX(v)
+        const vy = wPos.getY(v)
+        const wob = 0.86 + 0.22 * Math.sin(Math.atan2(vy, vx) * 3 + p.x)
+        wPos.setXY(v, vx * wob, vy * wob)
+      }
+      waterGeo.computeVertexNormals()
+
+      const bankGeo = waterGeo.clone()
+      bankGeo.scale(1.14, 1.14, 1)
+
+      const bank = new THREE.Mesh(bankGeo, pondBankMat)
+      bank.rotation.x = -Math.PI / 2
+      bank.position.y = -1.97
+      bank.receiveShadow = true
+      pondGroup.add(bank)
+
+      const bed = new THREE.Mesh(waterGeo, pondBedMat)
+      bed.rotation.x = -Math.PI / 2
+      bed.position.y = -1.94
+      pondGroup.add(bed)
+
+      const water = new THREE.Mesh(waterGeo, waterMat)
+      water.rotation.x = -Math.PI / 2
+      water.position.y = -1.88
+      water.receiveShadow = true
+      pondGroup.add(water)
+
+      pondGroup.position.set(p.x, 0, p.z)
+      earthSceneGroup.add(pondGroup)
+    }
+
+    // B1b. Minimal Fast Instanced 3D Grass Tufts (only in Grass Biome & outside ponds)
     const createGrassTuftGeo = () => {
       const positions: number[] = []
       const colors: number[] = []
@@ -1357,15 +1424,14 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
         const tipC = [0.09, 0.28, 0.04]
         colors.push(...rootC, ...rootC, ...tipC)
       }
-      // 20-blade dense grass clump per instance
-      for (let b = 0; b < 20; b++) {
-        const bAng = (b / 20) * Math.PI * 2 + (b % 3) * 0.35
-        const spread = 0.06 + (b % 5) * 0.095
+      for (let b = 0; b < 14; b++) {
+        const bAng = (b / 14) * Math.PI * 2 + (b % 3) * 0.41
+        const spread = 0.08 + (b % 5) * 0.14
         const ox = Math.cos(bAng) * spread
         const oz = Math.sin(bAng) * spread
-        const bh = 0.9 + (b % 4) * 0.22
-        const bw = 0.16 + (b % 3) * 0.03
-        const bLean = 0.14 + (b % 4) * 0.06
+        const bh = 0.85 + (b % 4) * 0.22
+        const bw = 0.18 + (b % 3) * 0.03
+        const bLean = 0.12 + (b % 4) * 0.05
         addBlade(bAng + 0.5, ox, oz, bh, bw, bLean)
       }
       const geo = new THREE.BufferGeometry()
@@ -1383,43 +1449,144 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
       metalness: 0.0,
       side: THREE.DoubleSide,
     })
-    const grassCount = 120000
-    const grassInst = new THREE.InstancedMesh(grassGeo, grassMat, grassCount)
-    grassInst.receiveShadow = true
+    const maxGrass = 2400
+    const grassInst = new THREE.InstancedMesh(grassGeo, grassMat, maxGrass)
     const dummy = new THREE.Object3D()
-    for (let i = 0; i < grassCount; i++) {
+    const gArr = grassInst.instanceMatrix.array as Float32Array
+    let placedGrass = 0
+    for (let i = 0; i < 6500 && placedGrass < maxGrass; i++) {
       const ang = (i * 2.399963) % (Math.PI * 2)
-      const r = 22.2 + Math.sqrt(i / grassCount) * 76 + Math.sin(i * 1.7) * 1.6
+      const r = 22.8 + Math.sqrt((i % 6500) / 6500) * 70 + Math.sin(i * 1.7) * 1.6
       const gx = Math.cos(ang) * r
       const gz = Math.sin(ang) * r
-      dummy.position.set(gx, -2, gz)
-      dummy.rotation.set(0, (i * 1.7) % (Math.PI * 2), 0)
-      const sc = 0.9 + ((i * 13) % 10) * 0.09
-      dummy.scale.set(sc, sc * (0.9 + (i % 4) * 0.16), sc)
-      dummy.updateMatrix()
-      grassInst.setMatrixAt(i, dummy.matrix)
+      if (ponds.some((p) => Math.hypot(gx - p.x, gz - p.z) < p.r + 1.4)) continue
+      const b = getEarthBiome(gx, gz)
+      if (b >= 0.45) continue // Keep rocky & snowy zones free of grass
+      const hillY = r > 26 ? Math.min(1, (r - 26) / 30) * (b - 0.42) * 2.2 : 0
+      const rot = (i * 1.7) % (Math.PI * 2)
+      const c = Math.cos(rot)
+      const s = Math.sin(rot)
+      const sc = 0.85 + ((i * 13) % 10) * 0.08
+      const sy = sc * (0.85 + (i % 4) * 0.14)
+      const base = placedGrass * 16
+      gArr[base] = c * sc
+      gArr[base + 1] = 0
+      gArr[base + 2] = -s * sc
+      gArr[base + 3] = 0
+      gArr[base + 4] = 0
+      gArr[base + 5] = sy
+      gArr[base + 6] = 0
+      gArr[base + 7] = 0
+      gArr[base + 8] = s * sc
+      gArr[base + 9] = 0
+      gArr[base + 10] = c * sc
+      gArr[base + 11] = 0
+      gArr[base + 12] = gx
+      gArr[base + 13] = -2 + hillY
+      gArr[base + 14] = gz
+      gArr[base + 15] = 1
+      placedGrass++
     }
+    grassInst.count = placedGrass
     grassInst.instanceMatrix.needsUpdate = true
     earthSceneGroup.add(grassInst)
 
-    // Instanced Meadow Wildflowers (yellow buttercups, violet-blue lupines, white daisies)
+    // B1c. Instanced 3D Granite Boulders & Rocks in Rocky & Snowy Zones
+    const rockGeo = new THREE.DodecahedronGeometry(1.0, 1)
+    const rPos = rockGeo.attributes.position
+    for (let v = 0; v < rPos.count; v++) {
+      const vx = rPos.getX(v)
+      const vy = rPos.getY(v)
+      const vz = rPos.getZ(v)
+      const j = 0.78 + 0.34 * Math.sin(vx * 3.7 + vy * 2.3) * Math.cos(vz * 4.1)
+      rPos.setXYZ(v, vx * j, vy * (j * 0.72), vz * j)
+    }
+    rockGeo.computeVertexNormals()
+    const rockMat = new THREE.MeshStandardMaterial({
+      color: 0x6b665e,
+      roughness: 0.92,
+      metalness: 0.04,
+      flatShading: true,
+    })
+    const rockInst = new THREE.InstancedMesh(rockGeo, rockMat, 320)
+    rockInst.castShadow = true
+    rockInst.receiveShadow = true
+    let placedRocks = 0
+    for (let i = 0; i < 950 && placedRocks < 320; i++) {
+      const ang = (i * 2.399963 + 0.3) % (Math.PI * 2)
+      const r = 25 + Math.sqrt((i % 950) / 950) * 78
+      const rx = Math.cos(ang) * r
+      const rz = Math.sin(ang) * r
+      const b = getEarthBiome(rx, rz)
+      if (b < 0.45) continue
+      const hillY = r > 26 ? Math.min(1, (r - 26) / 30) * (b - 0.42) * 2.2 : 0
+      const sc = 0.55 + ((i * 7) % 10) * 0.24
+      dummy.position.set(rx, -2 + hillY + sc * 0.22, rz)
+      dummy.rotation.set((i % 5) * 0.3, i * 1.1, (i % 3) * 0.25)
+      dummy.scale.set(sc * 1.25, sc * 0.75, sc)
+      dummy.updateMatrix()
+      rockInst.setMatrixAt(placedRocks++, dummy.matrix)
+    }
+    rockInst.count = placedRocks
+    rockInst.instanceMatrix.needsUpdate = true
+    earthSceneGroup.add(rockInst)
+
+    // B1d. Instanced Sculpted Snow Drifts in Snowy Biome Zones
+    const snowDriftGeo = new THREE.IcosahedronGeometry(1.4, 1)
+    snowDriftGeo.scale(1.8, 0.38, 1.3)
+    const snowDriftMat = new THREE.MeshStandardMaterial({
+      color: 0xeef4fb,
+      roughness: 0.78,
+      metalness: 0.02,
+    })
+    const snowInst = new THREE.InstancedMesh(snowDriftGeo, snowDriftMat, 180)
+    snowInst.receiveShadow = true
+    let placedSnow = 0
+    for (let i = 0; i < 800 && placedSnow < 180; i++) {
+      const ang = (i * 2.399963 + 1.2) % (Math.PI * 2)
+      const r = 27 + Math.sqrt((i % 800) / 800) * 74
+      const sx = Math.cos(ang) * r
+      const sz = Math.sin(ang) * r
+      const b = getEarthBiome(sx, sz)
+      if (b < 0.65) continue
+      const hillY = r > 26 ? Math.min(1, (r - 26) / 30) * (b - 0.42) * 2.2 : 0
+      const sc = 0.9 + (i % 5) * 0.45
+      dummy.position.set(sx, -2.05 + hillY, sz)
+      dummy.rotation.set(0, i * 0.85, 0)
+      dummy.scale.set(sc, sc * 0.7, sc)
+      dummy.updateMatrix()
+      snowInst.setMatrixAt(placedSnow++, dummy.matrix)
+    }
+    snowInst.count = placedSnow
+    snowInst.instanceMatrix.needsUpdate = true
+    earthSceneGroup.add(snowInst)
+
+    // Instanced Meadow Wildflowers (in Grass Biome only)
     const flowerGeo = new THREE.OctahedronGeometry(0.16, 0)
     flowerGeo.scale(1.1, 0.45, 1.1)
     const flowerMat = new THREE.MeshStandardMaterial({ roughness: 0.7, metalness: 0.02 })
-    const flowerCount = 550
+    const flowerCount = 320
     const flowerInst = new THREE.InstancedMesh(flowerGeo, flowerMat, flowerCount)
     const flowerPalette = [new THREE.Color(0xfacc15), new THREE.Color(0x818cf8), new THREE.Color(0xf8fafc)]
-    for (let i = 0; i < flowerCount; i++) {
+    let placedFlowers = 0
+    for (let i = 0; i < 800 && placedFlowers < flowerCount; i++) {
       const ang = (i * 2.399963 + 0.5) % (Math.PI * 2)
-      const r = 25 + Math.sqrt(i / flowerCount) * 78
-      dummy.position.set(Math.cos(ang) * r, -1.15 + (i % 3) * 0.12, Math.sin(ang) * r)
+      const r = 24 + Math.sqrt((i % 800) / 800) * 74
+      const fx = Math.cos(ang) * r
+      const fz = Math.sin(ang) * r
+      const b = getEarthBiome(fx, fz)
+      if (b >= 0.48) continue
+      const hillY = r > 26 ? Math.min(1, (r - 26) / 30) * (b - 0.42) * 2.2 : 0
+      dummy.position.set(fx, -1.15 + hillY + (i % 3) * 0.12, fz)
       dummy.rotation.set(0, i * 0.9, 0)
       const fs = 0.7 + (i % 4) * 0.22
       dummy.scale.set(fs, fs, fs)
       dummy.updateMatrix()
-      flowerInst.setMatrixAt(i, dummy.matrix)
-      flowerInst.setColorAt(i, flowerPalette[i % flowerPalette.length])
+      flowerInst.setMatrixAt(placedFlowers, dummy.matrix)
+      flowerInst.setColorAt(placedFlowers, flowerPalette[placedFlowers % flowerPalette.length])
+      placedFlowers++
     }
+    flowerInst.count = placedFlowers
     flowerInst.instanceMatrix.needsUpdate = true
     if (flowerInst.instanceColor) flowerInst.instanceColor.needsUpdate = true
     earthSceneGroup.add(flowerInst)
@@ -1562,8 +1729,6 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
           rotSeed + (k * Math.PI) / 3,
           (k - 1) * 0.25
         )
-        card.castShadow = true
-        card.receiveShadow = true
         parent.add(card)
       }
     }
@@ -1948,10 +2113,10 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
     marsEnvironment.visible = false
     scene.add(marsEnvironment)
 
-    // A. 360-Degree Panoramic Photographic Martian Canyon Backdrop
+    // A. 360-Degree Panoramic Photographic Martian Canyon Backdrop (texture deferred until after first Earth frame)
     const marsPanoramaGeo = new THREE.CylinderGeometry(320, 320, 180, 64, 1, true)
     const marsPanoramaMat = new THREE.MeshBasicMaterial({
-      map: createMarsPanoramicTexture(),
+      color: 0x591307,
       side: THREE.BackSide,
     })
     const marsPanoramaMesh = new THREE.Mesh(marsPanoramaGeo, marsPanoramaMat)
@@ -1959,7 +2124,6 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
     marsEnvironment.add(marsPanoramaMesh)
 
     // B. Hyper-Realistic 3D Displaced Martian Canyon & Regolith Terrain
-    const marsRegolith = createMarsRegolithMaps()
     const marsGroundGeo = new THREE.PlaneGeometry(800, 800, 96, 96)
     marsGroundGeo.rotateX(-Math.PI / 2)
     const mPos = marsGroundGeo.attributes.position
@@ -1978,24 +2142,38 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
     }
     marsGroundGeo.computeVertexNormals()
     const marsGroundMat = new THREE.MeshStandardMaterial({
-      map: marsRegolith.map,
-      bumpMap: marsRegolith.bumpMap,
+      color: 0x9c3d22,
       bumpScale: 0.45,
       roughness: 0.94,
       metalness: 0.04,
     })
-    const marsGroundMesh = new THREE.Mesh(marsGroundGeo, marsGroundMat)
-    marsGroundMesh.position.y = 0
-    marsEnvironment.add(marsGroundMesh)
 
     // C. 50+ Organic Jagged Martian Basalt & Iron-Oxide Boulders
     const boulderMat = new THREE.MeshStandardMaterial({
       color: 0x5c2012,
-      bumpMap: marsRegolith.bumpMap,
       bumpScale: 0.35,
       roughness: 0.92,
       metalness: 0.06,
     })
+
+    // Defer heavy Mars procedural textures until after initial Earth scene renders
+    const marsTexTimer = window.setTimeout(() => {
+      marsPanoramaMat.color.setHex(0xffffff)
+      marsPanoramaMat.map = createMarsPanoramicTexture()
+      marsPanoramaMat.needsUpdate = true
+
+      const marsRegolith = createMarsRegolithMaps()
+      marsGroundMat.color.setHex(0xffffff)
+      marsGroundMat.map = marsRegolith.map
+      marsGroundMat.bumpMap = marsRegolith.bumpMap
+      marsGroundMat.needsUpdate = true
+
+      boulderMat.bumpMap = marsRegolith.bumpMap
+      boulderMat.needsUpdate = true
+    }, 60)
+    const marsGroundMesh = new THREE.Mesh(marsGroundGeo, marsGroundMat)
+    marsGroundMesh.position.y = 0
+    marsEnvironment.add(marsGroundMesh)
     for (let i = 0; i < 55; i++) {
       const angle = (i / 55) * Math.PI * 2 + (i % 4) * 0.11
       const dist = 24 + ((i * 37) % 85)
@@ -2402,6 +2580,7 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
     animate()
 
     return () => {
+      window.clearTimeout(marsTexTimer)
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current)
       window.removeEventListener('resize', handleResize)
       window.removeEventListener('pointermove', handlePointerMove)
