@@ -1,0 +1,317 @@
+/* ==========================================================================
+   404 — LOST CAVE  |  torch spotlight + cave photo + centered text
+   ========================================================================== */
+
+/* ── Root container ───────────────────────────────────────────────────────── */
+.nf-root {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  overflow: hidden;
+  background: #040408;
+  /* cursor is default — NOT hidden */
+}
+
+/* ── Cave background photo ────────────────────────────────────────────────── */
+.nf-bg {
+  position: absolute;
+  inset: 0;
+  background: url('/images/404-cave-bg.jpg') center / cover no-repeat;
+  /* Slightly brighter so the cave shows through the dark mask */
+  filter: brightness(0.85) saturate(0.80);
+}
+
+/* ── Dark mask — JS writes radial-gradient here each frame ───────────────── */
+.nf-mask {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+  /* Fallback before first JS paint — slightly lighter than before */
+  background: rgba(4, 4, 8, 0.78);
+  will-change: background;
+}
+
+/* ── Warm bloom layer (mix-blend: screen for additive glow) ──────────────── */
+.nf-bloom {
+  position: absolute;
+  inset: 0;
+  z-index: 11;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  will-change: background;
+}
+
+/* ── Content (always above overlays) ─────────────────────────────────────── */
+.nf-content {
+  position: relative;
+  z-index: 20;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 24px;
+  text-align: center;
+}
+
+/* ── 404 eyebrow ──────────────────────────────────────────────────────────── */
+.nf-eyebrow {
+  font-size: clamp(13px, 1.8vw, 18px);
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: rgba(255, 160, 80, 0.80);
+  margin: 0;
+}
+
+/* ── Main heading ─────────────────────────────────────────────────────────── */
+.nf-heading {
+  font-size: clamp(32px, 7vw, 80px);
+  font-weight: 900;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: -0.02em;
+  line-height: 1.08;
+  /* overflow visible so fallen letter can droop below baseline */
+  overflow: visible;
+}
+
+/* ── Individual letter base ───────────────────────────────────────────────── */
+.lt {
+  display: inline-block;
+  /* default: full brightness, inherits text-shadow from heading */
+  text-shadow:
+    0 0 40px rgba(255, 230, 180, 0.35),
+    0 0 90px rgba(255, 200, 120, 0.15);
+}
+
+.lt-space {
+  display: inline-block;
+  width: 0.3em;
+}
+
+/* ══ EFFECT 1 — ERODE ══════════════════════════════════════════════════════
+   Cave water slowly dissolves the stone letter.
+   Unlike plain "dim", this combines blur + opacity — the letter goes soft
+   at the edges as if the stone surface is breaking down.                     */
+.lt-erode {
+  animation: lt-erode-anim 7s ease-in-out infinite;
+}
+.lt-erode--2 { animation-delay: -2.8s; }
+.lt-erode--3 { animation-delay: -5.1s; }
+
+@keyframes lt-erode-anim {
+  0%, 100% { opacity: 0.20; filter: blur(0px);   }
+  35%       { opacity: 0.38; filter: blur(1.8px); }
+  65%       { opacity: 0.14; filter: blur(3px);   }
+}
+
+/* ══ EFFECT 2 — TREMOR ═════════════════════════════════════════════════════
+   Something enormous is moving through the cave behind this stone.
+   Short rapid-fire position bursts with long silence between — a seismic
+   tremor, not a blink. Completely different from opacity flickering.         */
+.lt-tremor {
+  animation: lt-tremor-anim 4.5s linear infinite;
+}
+.lt-tremor--2 {
+  animation-duration: 3.6s;
+  animation-delay: -1.8s;
+}
+
+@keyframes lt-tremor-anim {
+  /* ── Burst 1 ── */
+  0%, 14%, 23%, 100% { transform: translate(0, 0); }
+  15%  { transform: translate( 2px, -1px);  }
+  16%  { transform: translate(-1.5px, 1.5px); }
+  17%  { transform: translate( 2px, -0.5px); }
+  18%  { transform: translate(-0.5px, 1px);  }
+  19%  { transform: translate( 1px, -1.5px); }
+  20%  { transform: translate(-1px, 0.5px);  }
+  21%  { transform: translate( 0.5px, 1px);  }
+  22%  { transform: translate(0, 0);         }
+  /* ── Burst 2 (shorter) ── */
+  60%, 69% { transform: translate(0, 0); }
+  61%  { transform: translate(-2px, 0.5px);  }
+  62%  { transform: translate( 1.5px, -1px); }
+  63%  { transform: translate(-1px, 1.5px);  }
+  64%  { transform: translate( 0.5px, -0.5px); }
+  65%  { transform: translate(0, 0);         }
+}
+
+/* ══ EFFECT 3 — SINK ══════════════════════════════════════════════════════
+   Letter being absorbed back into the cave wall — a 3D perspective tilt
+   that makes it appear to recede INTO the stone surface from its base.
+   Very different from sideways hang; the bottom stays grounded while the
+   top slowly merges into the rock face.                                      */
+.lt-sink {
+  transform-origin: bottom center;
+  animation: lt-sink-anim 9s ease-in-out infinite;
+}
+
+@keyframes lt-sink-anim {
+  0%, 100% {
+    transform: perspective(280px) rotateX(0deg);
+    opacity: 1;
+  }
+  40% {
+    transform: perspective(280px) rotateX(-42deg);
+    opacity: 0.45;
+  }
+  70% {
+    transform: perspective(280px) rotateX(-22deg);
+    opacity: 0.72;
+  }
+}
+
+/* ══ EFFECT 4 — ALIVE ══════════════════════════════════════════════════════
+   The cave breathes. This letter pulses with a double heartbeat rhythm —
+   white → deep crimson → white — like bioluminescence or blood veins
+   running through the stone. The resting period is long; the beat is fast.  */
+.lt-alive {
+  animation: lt-alive-anim 3.4s ease-in-out infinite;
+}
+
+@keyframes lt-alive-anim {
+  /* Resting state — normal white */
+  0%, 8%, 20%, 85%, 100% {
+    color: #ffffff;
+    text-shadow:
+      0 0 35px rgba(255, 220, 160, 0.4),
+      0 0 80px rgba(255, 180, 80, 0.15);
+  }
+  /* First beat — LUB */
+  5% {
+    color: #ff2222;
+    text-shadow:
+      0 0 20px rgba(255, 30, 30, 1),
+      0 0 50px rgba(200, 0,  0,  0.6),
+      0 0 90px rgba(140, 0,  0,  0.3);
+  }
+  /* Short rest between beats */
+  /* Second beat — DUB (slightly softer) */
+  14% {
+    color: #ff4444;
+    text-shadow:
+      0 0 18px rgba(255, 50, 50, 0.9),
+      0 0 42px rgba(180, 0,  0,  0.5),
+      0 0 80px rgba(120, 0,  0,  0.25);
+  }
+}
+
+
+/* ── Subtitle ─────────────────────────────────────────────────────────────── */
+.nf-sub {
+  font-size: clamp(13px, 1.5vw, 17px);
+  color: rgba(255, 115, 75, 0.90);
+  margin: 0;
+  max-width: 440px;
+  line-height: 1.6;
+}
+
+/* ── Back button ──────────────────────────────────────────────────────────── */
+.nf-btn {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 13px 30px;
+  background: #ffffff;
+  color: #111111;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: clamp(13px, 1.4vw, 15px);
+  text-decoration: none;
+  letter-spacing: 0.01em;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.nf-btn:hover {
+  transform: scale(1.05);
+  background: #f5f0e8;
+  box-shadow: 0 6px 28px rgba(255, 210, 140, 0.45);
+}
+
+.nf-btn:focus-visible {
+  outline: 3px solid rgba(255, 180, 90, 0.8);
+  outline-offset: 3px;
+}
+
+/* ==========================================================================
+   RESPONSIVE
+   ========================================================================== */
+
+/* ── Tablet (≤ 768px) ─────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .nf-content {
+    gap: 14px;
+    padding: 20px 16px;
+  }
+
+  .nf-heading {
+    font-size: clamp(28px, 9vw, 48px);
+  }
+
+  .nf-sub {
+    font-size: 14px;
+    max-width: 320px;
+  }
+
+  .nf-btn {
+    padding: 12px 26px;
+    font-size: 14px;
+  }
+}
+
+/* ── Mobile (≤ 480px) ─────────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .nf-content {
+    gap: 12px;
+    padding: 16px 12px;
+  }
+
+  .nf-eyebrow {
+    font-size: 12px;
+    letter-spacing: 0.22em;
+  }
+
+  .nf-heading {
+    font-size: clamp(26px, 10vw, 40px);
+    letter-spacing: -0.01em;
+  }
+
+  .nf-sub {
+    font-size: 13px;
+    max-width: 280px;
+  }
+
+  .nf-btn {
+    padding: 11px 22px;
+    font-size: 13px;
+    margin-top: 4px;
+  }
+}
+
+/* ── Very short screens (landscape phone) ─────────────────────────────────── */
+@media (max-height: 500px) {
+  .nf-content {
+    gap: 8px;
+    justify-content: center;
+  }
+
+  .nf-eyebrow {
+    display: none; /* hide to save vertical space */
+  }
+
+  .nf-heading {
+    font-size: clamp(22px, 6vh, 36px);
+  }
+
+  .nf-sub {
+    font-size: 12px;
+  }
+
+  .nf-btn {
+    margin-top: 2px;
+    padding: 9px 20px;
+  }
+}

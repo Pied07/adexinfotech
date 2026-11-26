@@ -532,6 +532,98 @@ button, input, textarea, select {
    ROCKET LAUNCH EXPERIENCE (CINEMATIC 5-STAGE JOURNEY TO MARS)
    Three.js 3D WebGL Photorealistic Experience
    ========================================================================== */
+/* Sleek Minimal Preloader for Rocket Launch */
+.rocket-preloader {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  background: #050811;
+  transition: opacity 0.35s ease, visibility 0.35s ease;
+}
+
+.rocket-preloader.is-ready {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.rocket-preloader-inner {
+  width: min(280px, 78vw);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+.rocket-preloader-brand {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.32em;
+  color: #f8fafc;
+  text-align: center;
+}
+
+.rocket-preloader-spinner-wrap {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rocket-preloader-spinner {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2.5px solid rgba(255, 255, 255, 0.08);
+  border-top-color: #22d3ee;
+  border-right-color: #e8452c;
+  animation: rocket-preloader-spin 0.9s cubic-bezier(0.5, 0.1, 0.5, 0.9) infinite;
+  box-shadow: 0 0 16px rgba(34, 211, 238, 0.28);
+}
+
+.rocket-preloader-spinner-core {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffedd5 20%, #e8452c 100%);
+  box-shadow: 0 0 12px rgba(232, 69, 44, 0.7);
+  animation: rocket-preloader-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes rocket-preloader-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes rocket-preloader-pulse {
+  0%, 100% {
+    transform: scale(0.85);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.25);
+    opacity: 1;
+  }
+}
+
+.rocket-preloader-meta {
+  display: flex;
+  justify-content: center;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  color: rgba(148, 163, 184, 0.85);
+}
+
 .rocket-cinematic-screen {
   position: fixed;
   inset: 0;
@@ -2031,19 +2123,20 @@ button, input, textarea, select {
    ========================================================================== */
 .mars-disembark-card {
   position: relative;
-  width: min(640px, calc(100vw - 32px));
-  background: rgba(14, 20, 36, 0.95);
-  border: 1.5px solid rgba(34, 211, 238, 0.45);
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.85), 0 0 35px var(--cyan-glow);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-radius: 16px;
-  padding: 22px 28px;
+  width: auto;
+  max-width: min(460px, calc(100vw - 32px));
+  background: rgba(10, 16, 30, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.65), 0 0 20px rgba(232, 69, 44, 0.25);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-radius: 14px;
+  padding: 10px 16px;
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
   z-index: 55;
   pointer-events: auto;
   animation: card-appear 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
@@ -2063,41 +2156,38 @@ button, input, textarea, select {
   letter-spacing: 0.14em;
   color: var(--cyan-accent);
   background: rgba(34, 211, 238, 0.1);
-  padding: 4px 14px;
+  padding: 3px 12px;
   border-radius: 20px;
   border: 1px solid rgba(34, 211, 238, 0.25);
 }
 
 .disembark-title {
-  font-size: clamp(17px, 3.2vw, 23px);
-  font-weight: 850;
+  font-size: clamp(14px, 2.4vw, 16.5px);
+  font-weight: 800;
   letter-spacing: 0.04em;
   color: #FFFFFF;
   margin: 0;
-  line-height: 1.25;
+  line-height: 1.2;
 }
 
 .disembark-desc {
-  font-size: clamp(12px, 1.8vw, 13.5px);
-  line-height: 1.6;
-  color: var(--text-body);
-  max-width: 520px;
-  margin: 0;
+  display: none;
 }
 
 /* Grand Mars Disembark Button (Click to Enter Website) */
 .grand-mars-disembark-btn {
   position: relative;
-  width: 100%;
-  max-width: 520px;
-  margin-top: 6px;
-  padding: 16px 28px;
-  border-radius: 12px;
-  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  width: auto;
+  min-width: 270px;
+  max-width: 100%;
+  margin-top: 2px;
+  padding: 10px 22px;
+  border-radius: 10px;
+  border: 1.2px solid rgba(255, 255, 255, 0.35);
   background: linear-gradient(135deg, #FF5030 0%, #E8452C 55%, #B8250F 100%);
   color: #FFFFFF;
   cursor: pointer;
-  box-shadow: 0 10px 35px rgba(232, 69, 44, 0.6), 0 0 0 2px rgba(232, 69, 44, 0.45);
+  box-shadow: 0 8px 25px rgba(232, 69, 44, 0.55);
   transition: transform 0.25s ease, box-shadow 0.25s ease;
   overflow: hidden;
 }
@@ -5569,3 +5659,4 @@ button, input, textarea, select {
     transition: none !important;
   }
 }
+

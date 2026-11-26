@@ -16,6 +16,6 @@ export async function generateMetadata(): Promise<Metadata> {
   }
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return <html lang="en"><body><SiteShell>{children}</SiteShell></body></html>
+export default function SiteLayout({ children }: { children: React.ReactNode }) {
+  return <SiteShell>{children}</SiteShell>
 }

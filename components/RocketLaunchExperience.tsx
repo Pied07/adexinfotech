@@ -53,10 +53,11 @@ function createRoundStarTexture(): THREE.CanvasTexture {
 // 2. Real Panoramic Earth Backdrop (Photorealistic Mountains, Clouds, Pine Forest)
 function createEarthPanoramicTexture(): THREE.CanvasTexture {
   const canvas = document.createElement('canvas')
-  canvas.width = 2048
-  canvas.height = 1024
+  canvas.width = 1024
+  canvas.height = 512
   const ctx = canvas.getContext('2d')
   if (ctx) {
+    ctx.scale(0.5, 0.5)
     // Daytime Atmospheric Sky Gradient
     const skyGrad = ctx.createLinearGradient(0, 0, 0, 680)
     skyGrad.addColorStop(0, '#1d4ed8')     // Deep blue zenith
@@ -822,8 +823,25 @@ function createMarsBumpTexture(): THREE.CanvasTexture {
   return tex
 }
 
-// Reset on every full page refresh so RocketLaunch always appears first on '/'
-let hasCompletedThisPageLoad = false
+// sessionStorage key — present after rocket completes; cleared by browser on refresh/new tab.
+// This means the rocket shows on hard refresh but NOT on client-side navigation back to '/'.
+const ROCKET_SHOWN_KEY = 'marsment:rocket-shown'
+
+// ── Navigation type detection (runs once at module evaluation) ─────────────
+// performance.navigation.type at THIS point reflects how the current page was
+// loaded — before any client-side routing happens.
+//   'reload'   → user pressed F5 / Ctrl+R → clear key so rocket shows again
+//   'navigate' → typed URL, clicked a link (even from the 404 page's own <html>
+//                root), or programmatic navigation → keep key, skip rocket
+if (typeof window !== 'undefined') {
+  try {
+    const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined
+    if (nav?.type === 'reload') {
+      // Hard refresh → clear so rocket plays again
+      sessionStorage.removeItem(ROCKET_SHOWN_KEY)
+    }
+  } catch { /* private mode / older browser — safe to ignore */ }
+}
 
 // =========================================================================
 // MAIN COMPONENT
@@ -833,7 +851,12 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
   const [stage, setStage] = useState<FlightStage>('earth_pad')
   const [isLaunched, setIsLaunched] = useState(false)
   const [audioEnabled, setAudioEnabled] = useState(false)
-  const [dismissed, setDismissed] = useState(() => pathname !== '/' || hasCompletedThisPageLoad)
+  // SSR-safe: initialize to `true` always (server renders nothing for the rocket).
+  // A useEffect below updates this to `false` on the client if the rocket should show.
+  // This prevents server/client mismatches from sessionStorage reads in useState.
+  const [dismissed, setDismissed] = useState(true)
+  const [, setLoadProgress] = useState(0)
+  const [sceneReady, setSceneReady] = useState(false)
   const [progress, setProgress] = useState(0)
 
   // Live Telemetry Readouts
@@ -845,32 +868,47 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
   const audioCtxRef = useRef<AudioContext | null>(null)
   const animFrameRef = useRef<number | null>(null)
   const stageRef = useRef<FlightStage>('earth_pad')
-  stageRef.current = stage
+
+  useEffect(() => {
+    stageRef.current = stage
+  }, [stage])
+
+  // Client-only: determine whether rocket should actually show.
+  // Runs after hydration — safe to read sessionStorage here.
+  useEffect(() => {
+    if (pathname !== '/') {
+      // Not on home → always dismissed
+      setDismissed(true)
+      return
+    }
+    try {
+      if (sessionStorage.getItem(ROCKET_SHOWN_KEY) !== 'true') {
+        // Not yet shown this session → show rocket
+        setDismissed(false)
+      }
+      // else: already shown → dismissed stays true (no rocket)
+    } catch {
+      // sessionStorage blocked (private mode etc.) → show rocket
+      setDismissed(false)
+    }
+  }, [pathname])
 
   // Real-time animation progress ref (0.0 to 1.0) synchronized with 60fps Three.js loop
   const flightProgressRef = useRef<number>(0)
 
-  // Lock body scroll while overlay is active
+  // Lock body scroll while rocket overlay is active; unlock when dismissed
   useEffect(() => {
-    if (pathname !== '/') {
-      setDismissed(true)
+    if (dismissed) {
       document.body.style.overflow = ''
       document.documentElement.style.overflow = ''
       return
     }
 
-    if (!hasCompletedThisPageLoad) {
-      setDismissed(false)
-      document.body.style.overflow = 'hidden'
-      document.documentElement.style.overflow = 'hidden'
-    } else {
-      setDismissed(true)
-      document.body.style.overflow = ''
-      document.documentElement.style.overflow = ''
-    }
+    document.body.style.overflow = 'hidden'
+    document.documentElement.style.overflow = 'hidden'
 
     const handleReplay = () => {
-      hasCompletedThisPageLoad = false
+      try { sessionStorage.removeItem(ROCKET_SHOWN_KEY) } catch { /* ignore */ }
       setStage('earth_pad')
       setIsLaunched(false)
       setProgress(0)
@@ -878,6 +916,8 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
       setVelocityKmS(0)
       setAltitudeKm(0)
       setTargetDistanceMkm(225.0)
+      setLoadProgress(0)
+      setSceneReady(false)
       setDismissed(false)
       document.body.style.overflow = 'hidden'
       document.documentElement.style.overflow = 'hidden'
@@ -889,7 +929,7 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
       document.body.style.overflow = ''
       document.documentElement.style.overflow = ''
     }
-  }, [pathname])
+  }, [dismissed])
 
   // Sound Synthesizer
   const playSoundEffect = (type: 'ignite' | 'cabin' | 'warp' | 'plasma' | 'touchdown') => {
@@ -953,6 +993,193 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
     }
   }
 
+  // Smooth gradual progress bar animation while scene initializes
+  useEffect(() => {
+    if (dismissed || sceneReady) return
+    let cur = 0
+    const timer = window.setInterval(() => {
+      cur += cur < 40 ? 5 : cur < 75 ? 3 : cur < 92 ? 1.5 : 0.4
+      if (cur > 95) cur = 95
+      setLoadProgress(Math.floor(cur))
+    }, 40)
+    // Safety fallback: ensure loading screen dismisses even if WebGL is delayed
+    const safety = window.setTimeout(() => {
+      setLoadProgress(100)
+      setSceneReady(true)
+    }, 3200)
+    return () => {
+      window.clearInterval(timer)
+      window.clearTimeout(safety)
+    }
+  }, [dismissed, sceneReady])
+
+  // Ambient Soundscape: Rocket Engine Humming + Earth Birds / Mars Alien Music
+  useEffect(() => {
+    if (dismissed || !audioEnabled) return
+    let stopped = false
+    let birdTimer: number | undefined
+    let alienTimer: number | undefined
+    const stopNodes: Array<{ stop: () => void }> = []
+    let masterGain: GainNode | null = null
+
+    try {
+      if (!audioCtxRef.current) {
+        audioCtxRef.current = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
+      }
+      const ctx = audioCtxRef.current
+      if (ctx.state === 'suspended') ctx.resume()
+
+      masterGain = ctx.createGain()
+      masterGain.gain.setValueAtTime(0.001, ctx.currentTime)
+      masterGain.gain.exponentialRampToValueAtTime(1.0, ctx.currentTime + 0.6)
+      masterGain.connect(ctx.destination)
+
+      // 1. Constant Rocket Engine Humming (Earth Idle + Mars + Flight)
+      const engineFilter = ctx.createBiquadFilter()
+      engineFilter.type = 'lowpass'
+      engineFilter.frequency.value = 145
+      engineFilter.connect(masterGain)
+
+      const humGain = ctx.createGain()
+      humGain.gain.value = 0.055
+      humGain.connect(engineFilter)
+
+      const humOsc1 = ctx.createOscillator()
+      humOsc1.type = 'sawtooth'
+      humOsc1.frequency.value = 56
+      humOsc1.connect(humGain)
+      humOsc1.start()
+
+      const humOsc2 = ctx.createOscillator()
+      humOsc2.type = 'triangle'
+      humOsc2.frequency.value = 112
+      humOsc2.connect(humGain)
+      humOsc2.start()
+
+      const lfo = ctx.createOscillator()
+      const lfoGain = ctx.createGain()
+      lfo.frequency.value = 0.45
+      lfoGain.gain.value = 0.014
+      lfo.connect(lfoGain)
+      lfoGain.connect(humGain.gain)
+      lfo.start()
+
+      stopNodes.push(humOsc1, humOsc2, lfo)
+
+      // 2. Earth Idle: Random Songbird Chirps in Background
+      if (stage === 'earth_pad') {
+        const scheduleBirdChirp = () => {
+          if (stopped || !masterGain) return
+          try {
+            const now = ctx.currentTime
+            const notes = 2 + Math.floor(Math.random() * 3)
+            const baseFreq = 2200 + Math.random() * 1400
+            for (let n = 0; n < notes; n++) {
+              const t0 = now + n * (0.09 + Math.random() * 0.06)
+              const dur = 0.07 + Math.random() * 0.05
+              const osc = ctx.createOscillator()
+              const g = ctx.createGain()
+              osc.type = 'sine'
+              osc.frequency.setValueAtTime(baseFreq, t0)
+              osc.frequency.exponentialRampToValueAtTime(baseFreq * (1.28 + Math.random() * 0.25), t0 + dur * 0.5)
+              osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.92, t0 + dur)
+              g.gain.setValueAtTime(0.0001, t0)
+              g.gain.linearRampToValueAtTime(0.032, t0 + 0.015)
+              g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur)
+              osc.connect(g)
+              g.connect(masterGain)
+              osc.start(t0)
+              osc.stop(t0 + dur + 0.02)
+            }
+          } catch {
+            // ignore
+          }
+          birdTimer = window.setTimeout(scheduleBirdChirp, 1600 + Math.random() * 2800)
+        }
+        birdTimer = window.setTimeout(scheduleBirdChirp, 500)
+      }
+
+      // 3. Mars Environment: Alien Sci-Fi Ambient Music & Eerie Chimes
+      if (stage === 'mars_touchdown' || stage === 'mars_exterior') {
+        const padFilter = ctx.createBiquadFilter()
+        padFilter.type = 'lowpass'
+        padFilter.frequency.value = 420
+        padFilter.connect(masterGain)
+
+        const padGain = ctx.createGain()
+        padGain.gain.value = 0.038
+        padGain.connect(padFilter)
+
+        const alienFreqs = [110, 116.54, 164.81, 233.08] // Eerie Martian minor-2nd / tritone pad
+        alienFreqs.forEach((f, idx) => {
+          const osc = ctx.createOscillator()
+          osc.type = idx % 2 === 0 ? 'sine' : 'triangle'
+          osc.frequency.value = f
+          osc.detune.value = (idx - 1.5) * 8
+          osc.connect(padGain)
+          osc.start()
+          stopNodes.push(osc)
+        })
+
+        const padLfo = ctx.createOscillator()
+        const padLfoGain = ctx.createGain()
+        padLfo.frequency.value = 0.14
+        padLfoGain.gain.value = 220
+        padLfo.connect(padLfoGain)
+        padLfoGain.connect(padFilter.frequency)
+        padLfo.start()
+        stopNodes.push(padLfo)
+
+        const scheduleAlienChime = () => {
+          if (stopped || !masterGain) return
+          try {
+            const now = ctx.currentTime
+            const chimeFreqs = [440, 466.16, 622.25, 698.46, 932.33]
+            const freq = chimeFreqs[Math.floor(Math.random() * chimeFreqs.length)]
+            const osc = ctx.createOscillator()
+            const g = ctx.createGain()
+            osc.type = 'sine'
+            osc.frequency.setValueAtTime(freq, now)
+            osc.frequency.exponentialRampToValueAtTime(freq * 0.985, now + 2.1)
+            g.gain.setValueAtTime(0.0001, now)
+            g.gain.linearRampToValueAtTime(0.028, now + 0.12)
+            g.gain.exponentialRampToValueAtTime(0.0001, now + 2.2)
+            osc.connect(g)
+            g.connect(masterGain)
+            osc.start(now)
+            osc.stop(now + 2.25)
+          } catch {
+            // ignore
+          }
+          alienTimer = window.setTimeout(scheduleAlienChime, 2400 + Math.random() * 2600)
+        }
+        alienTimer = window.setTimeout(scheduleAlienChime, 700)
+      }
+    } catch {
+      // Audio optional
+    }
+
+    return () => {
+      stopped = true
+      if (birdTimer) window.clearTimeout(birdTimer)
+      if (alienTimer) window.clearTimeout(alienTimer)
+      stopNodes.forEach((n) => {
+        try {
+          n.stop()
+        } catch {
+          // ignore
+        }
+      })
+      if (masterGain) {
+        try {
+          masterGain.disconnect()
+        } catch {
+          // ignore
+        }
+      }
+    }
+  }, [audioEnabled, stage, dismissed])
+
   // =========================================================================
   // THREE.JS 3D WEBGL GRAPHICS ENGINE
   // =========================================================================
@@ -960,6 +1187,22 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
     if (dismissed) return
     const container = containerRef.current
     if (!container) return
+
+    let disposed = false
+    let cleanupThree: (() => void) | null = null
+    let initRafId: number | null = null
+    const yieldFrame = () =>
+      new Promise<void>((resolve) => {
+        initRafId = requestAnimationFrame(() => resolve())
+      })
+
+    void (async () => {
+      await yieldFrame()
+      if (disposed) return
+      cleanupThree = await initScene()
+    })()
+
+    async function initScene(): Promise<() => void> {
 
     // Scene & Camera
     const scene = new THREE.Scene()
@@ -980,7 +1223,7 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
     renderer.toneMapping = THREE.ACESFilmicToneMapping
     renderer.toneMappingExposure = 1.3
     renderer.shadowMap.enabled = true
-    container.appendChild(renderer.domElement)
+    container!.appendChild(renderer.domElement)
 
     // Lighting (Realistic Daytime Sunlight)
     const ambientLight = new THREE.AmbientLight(0xbae6fd, 1.6)
@@ -1279,7 +1522,7 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
     const getEarthBiome = (x: number, z: number) => fbm3(x * 0.022 + 1.4, 0.3, z * 0.022 - 0.9, 3)
 
     // Subtle multi-biome ground plane with vertex colors (grass spots, rock/soil ground, snow) + bump detail
-    const groundGeo = new THREE.PlaneGeometry(360, 360, 44, 44)
+    const groundGeo = new THREE.PlaneGeometry(360, 360, 28, 28)
     groundGeo.rotateX(-Math.PI / 2)
     const gPos = groundGeo.attributes.position
     const gColors = new Float32Array(gPos.count * 3)
@@ -1424,12 +1667,12 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
         const tipC = [0.09, 0.28, 0.04]
         colors.push(...rootC, ...rootC, ...tipC)
       }
-      for (let b = 0; b < 10; b++) {
-        const bAng = (b / 10) * Math.PI * 2 + (b % 3) * 0.41
-        const spread = 0.08 + (b % 4) * 0.14
+      for (let b = 0; b < 20; b++) {
+        const bAng = (b / 20) * Math.PI * 2 + (b % 3) * 0.41
+        const spread = 0.04 + (b % 4) * 0.1
         const ox = Math.cos(bAng) * spread
         const oz = Math.sin(bAng) * spread
-        const bh = 0.8 + (b % 4) * 0.2
+        const bh = 0.9 + (b % 4) * 0.22
         const bw = 0.18 + (b % 3) * 0.03
         const bLean = 0.12 + (b % 4) * 0.05
         addBlade(bAng + 0.5, ox, oz, bh, bw, bLean)
@@ -1449,43 +1692,55 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
       metalness: 0.0,
       side: THREE.DoubleSide,
     })
-    const maxGrass = 350
+    // Just 5 thick clusters of grass (fast load + clean natural look)
+    const grassClusters = [
+      { x: -23, z: 16, r: 4.5 },
+      { x: 25, z: 14, r: 4.2 },
+      { x: -34, z: -12, r: 4.8 },
+      { x: 32, z: -18, r: 4.4 },
+      { x: -16, z: -30, r: 4.0 },
+    ]
+    const maxGrass = 140
     const grassInst = new THREE.InstancedMesh(grassGeo, grassMat, maxGrass)
     const dummy = new THREE.Object3D()
     const gArr = grassInst.instanceMatrix.array as Float32Array
     let placedGrass = 0
-    for (let i = 0; i < 2400 && placedGrass < maxGrass; i++) {
-      const ang = (i * 2.399963) % (Math.PI * 2)
-      const r = 23 + Math.sqrt((i % 2400) / 2400) * 66 + Math.sin(i * 1.7) * 1.6
-      const gx = Math.cos(ang) * r
-      const gz = Math.sin(ang) * r
-      if (ponds.some((p) => Math.hypot(gx - p.x, gz - p.z) < p.r + 1.4)) continue
-      const b = getEarthBiome(gx, gz)
-      if (b >= 0.36) continue // Grass only in a few natural meadow spots
-      const hillY = r > 26 ? Math.min(1, (r - 26) / 30) * (b - 0.42) * 2.2 : 0
-      const rot = (i * 1.7) % (Math.PI * 2)
-      const c = Math.cos(rot)
-      const s = Math.sin(rot)
-      const sc = 0.85 + ((i * 13) % 10) * 0.08
-      const sy = sc * (0.85 + (i % 4) * 0.14)
-      const base = placedGrass * 16
-      gArr[base] = c * sc
-      gArr[base + 1] = 0
-      gArr[base + 2] = -s * sc
-      gArr[base + 3] = 0
-      gArr[base + 4] = 0
-      gArr[base + 5] = sy
-      gArr[base + 6] = 0
-      gArr[base + 7] = 0
-      gArr[base + 8] = s * sc
-      gArr[base + 9] = 0
-      gArr[base + 10] = c * sc
-      gArr[base + 11] = 0
-      gArr[base + 12] = gx
-      gArr[base + 13] = -2 + hillY
-      gArr[base + 14] = gz
-      gArr[base + 15] = 1
-      placedGrass++
+    for (let cIdx = 0; cIdx < grassClusters.length && placedGrass < maxGrass; cIdx++) {
+      const cluster = grassClusters[cIdx]
+      const countInCluster = Math.floor(maxGrass / grassClusters.length)
+      for (let j = 0; j < countInCluster && placedGrass < maxGrass; j++) {
+        const ang = (j * 2.399963) % (Math.PI * 2)
+        const dist = Math.sqrt(j / countInCluster) * cluster.r
+        const gx = cluster.x + Math.cos(ang) * dist
+        const gz = cluster.z + Math.sin(ang) * dist
+        if (ponds.some((p) => Math.hypot(gx - p.x, gz - p.z) < p.r + 0.8)) continue
+        const b = getEarthBiome(gx, gz)
+        const r = Math.hypot(gx, gz)
+        const hillY = r > 26 ? Math.min(1, (r - 26) / 30) * (b - 0.42) * 2.2 : 0
+        const rot = (j * 1.7) % (Math.PI * 2)
+        const cosR = Math.cos(rot)
+        const sinR = Math.sin(rot)
+        const sc = 0.95 + ((j * 13) % 8) * 0.08
+        const sy = sc * (0.9 + (j % 4) * 0.14)
+        const base = placedGrass * 16
+        gArr[base] = cosR * sc
+        gArr[base + 1] = 0
+        gArr[base + 2] = -sinR * sc
+        gArr[base + 3] = 0
+        gArr[base + 4] = 0
+        gArr[base + 5] = sy
+        gArr[base + 6] = 0
+        gArr[base + 7] = 0
+        gArr[base + 8] = sinR * sc
+        gArr[base + 9] = 0
+        gArr[base + 10] = cosR * sc
+        gArr[base + 11] = 0
+        gArr[base + 12] = gx
+        gArr[base + 13] = -2 + hillY
+        gArr[base + 14] = gz
+        gArr[base + 15] = 1
+        placedGrass++
+      }
     }
     grassInst.count = placedGrass
     grassInst.instanceMatrix.needsUpdate = true
@@ -1509,7 +1764,6 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
       flatShading: true,
     })
     const rockInst = new THREE.InstancedMesh(rockGeo, rockMat, 65)
-    rockInst.castShadow = true
     rockInst.receiveShadow = true
     let placedRocks = 0
     for (let i = 0; i < 320 && placedRocks < 65; i++) {
@@ -1591,36 +1845,178 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
     if (flowerInst.instanceColor) flowerInst.instanceColor.needsUpdate = true
     earthSceneGroup.add(flowerInst)
 
-    // B2. 3D Displaced Mountain Range Ring & Coastal Pine Forest Perimeter
-    const earthTerrainGeo = new THREE.RingGeometry(85, 285, 96, 18)
-    earthTerrainGeo.rotateX(-Math.PI / 2)
-    const ePos = earthTerrainGeo.attributes.position
-    const eColors = new Float32Array(ePos.count * 3)
-    for (let i = 0; i < ePos.count; i++) {
-      const vx = ePos.getX(i)
-      const vz = ePos.getZ(i)
-      const dist = Math.hypot(vx, vz)
-      const t = Math.max(0, Math.min(1, (dist - 92) / 170))
-      const ridge = fbm3(vx * 0.012 + 3.1, 0.5, vz * 0.012 - 1.7, 4)
-      const peak = Math.pow(t, 1.35) * (12 + ridge * 58)
-      ePos.setY(i, -2 + peak)
-      // Forest green lower slopes -> slate rock -> snow-dusted peaks
-      const snow = Math.max(0, Math.min(1, (peak - 36) / 16))
-      const rock = Math.max(0, Math.min(1, (peak - 16) / 18))
-      const r = (0.14 * (1 - rock) + 0.34 * rock) * (1 - snow) + 0.88 * snow
-      const g = (0.28 * (1 - rock) + 0.37 * rock) * (1 - snow) + 0.91 * snow
-      const b = (0.18 * (1 - rock) + 0.42 * rock) * (1 - snow) + 0.95 * snow
-      eColors[i * 3] = r
-      eColors[i * 3 + 1] = g
-      eColors[i * 3 + 2] = b
+    await yieldFrame()
+    if (disposed) {
+      renderer.dispose()
+      return () => {}
     }
-    earthTerrainGeo.setAttribute('color', new THREE.BufferAttribute(eColors, 3))
-    earthTerrainGeo.computeVertexNormals()
-    const earthTerrainMesh = new THREE.Mesh(
-      earthTerrainGeo,
-      new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, metalness: 0.04 })
+
+    // B2. Photorealistic Two-Tier Mountain Ranges:
+    // Tier 1 (Nearest): Seamless Pixel-Procedural Craggy Rocky Brown Mountain Range
+    const rockTexCanvas = document.createElement('canvas')
+    rockTexCanvas.width = 256
+    rockTexCanvas.height = 256
+    const rtCtx = rockTexCanvas.getContext('2d')!
+    const rockImg = rtCtx.createImageData(256, 256)
+    const rData = rockImg.data
+    for (let y = 0; y < 256; y++) {
+      const ay = (y / 256) * Math.PI * 2
+      const sy = Math.sin(ay)
+      const cy = Math.cos(ay)
+      for (let x = 0; x < 256; x++) {
+        const ax = (x / 256) * Math.PI * 2
+        const sx = Math.sin(ax)
+        const cx = Math.cos(ax)
+        // Seamless periodic 3D noise (zero UV tile seams) + balanced isotropic rock grain
+        const macro = fbm3(cx * 2.2 + 1.3, cy * 2.2 + 0.7, sx * 1.6 + sy * 1.6, 4)
+        const detail = fbm3(cx * 5.5 - sx * 2.5, cy * 5.5 + sy * 2.5, 3.1, 3)
+        const grain = ((Math.sin(x * 12.9898 + y * 78.233) * 43758.5453) % 1 + 1) % 1
+        const crack = Math.abs(detail - 0.5) < 0.032 ? 0.72 : 1.0
+        const v = (0.54 + macro * 0.36 + detail * 0.24 + (grain - 0.5) * 0.14) * crack
+        const idx = (y * 256 + x) * 4
+        rData[idx] = Math.min(255, Math.floor(118 * v))
+        rData[idx + 1] = Math.min(255, Math.floor(88 * v))
+        rData[idx + 2] = Math.min(255, Math.floor(66 * v))
+        rData[idx + 3] = 255
+      }
+    }
+    rtCtx.putImageData(rockImg, 0, 0)
+    const rockyCliffTex = new THREE.CanvasTexture(rockTexCanvas)
+    rockyCliffTex.colorSpace = THREE.SRGBColorSpace
+    rockyCliffTex.wrapS = THREE.RepeatWrapping
+    rockyCliffTex.wrapT = THREE.RepeatWrapping
+    rockyCliffTex.repeat.set(22, 8)
+
+    const rockyMtnGeo = new THREE.RingGeometry(132, 228, 160, 28)
+    rockyMtnGeo.rotateX(-Math.PI / 2)
+    const rmPos = rockyMtnGeo.attributes.position
+    const rmColors = new Float32Array(rmPos.count * 3)
+    for (let i = 0; i < rmPos.count; i++) {
+      const vx = rmPos.getX(i)
+      const vz = rmPos.getZ(i)
+      const dist = Math.hypot(vx, vz)
+      const t = Math.max(0, Math.min(1, (dist - 134) / 86))
+      const ridgeBase = fbm3(vx * 0.015 + 3.1, 0.5, vz * 0.015 - 1.7, 4)
+      const sharpRidge = 1 - Math.abs(fbm3(vx * 0.034 - 1.4, 0.4, vz * 0.034 + 2.2, 3) - 0.5) * 2
+      const fineCrag = fbm3(vx * 0.085, 0.2, vz * 0.085, 2)
+      const peak = Math.sin(t * Math.PI * 0.92) * (6 + ridgeBase * 22 + Math.pow(sharpRidge, 1.35) * 26 + fineCrag * 7)
+      rmPos.setY(i, -2 + peak)
+
+      // Natural rock talus & crevice shading + subtle snow pockets on upper peaks
+      const crevice = 0.62 + sharpRidge * 0.45
+      const snowPocket = Math.max(0, Math.min(1, (peak - 29 + (fineCrag - 0.5) * 8) / 8)) * 0.78
+      const br = (0.78 + fineCrag * 0.24) * crevice
+      const bg = (0.72 + fineCrag * 0.22) * crevice
+      const bb = (0.68 + fineCrag * 0.20) * crevice
+      rmColors[i * 3] = br * (1 - snowPocket) + 0.94 * snowPocket
+      rmColors[i * 3 + 1] = bg * (1 - snowPocket) + 0.96 * snowPocket
+      rmColors[i * 3 + 2] = bb * (1 - snowPocket) + 0.99 * snowPocket
+    }
+    rockyMtnGeo.setAttribute('color', new THREE.BufferAttribute(rmColors, 3))
+    rockyMtnGeo.computeVertexNormals()
+    const rockyMtnMesh = new THREE.Mesh(
+      rockyMtnGeo,
+      new THREE.MeshStandardMaterial({
+        map: rockyCliffTex,
+        vertexColors: true,
+        bumpMap: rockyCliffTex,
+        bumpScale: 1.0,
+        roughness: 0.96,
+        metalness: 0.02,
+      })
     )
-    earthSceneGroup.add(earthTerrainMesh)
+    earthSceneGroup.add(rockyMtnMesh)
+
+    // Photorealistic Taller Distant Forest Canopy Belt at the Rocky Mountain Base
+    const fCanvas = document.createElement('canvas')
+    fCanvas.width = 512
+    fCanvas.height = 128
+    const fCtx = fCanvas.getContext('2d')!
+    const fImg = fCtx.createImageData(512, 128)
+    const fData = fImg.data
+    for (let x = 0; x < 512; x++) {
+      // Organic multi-octave skyline height
+      const u = (x / 512) * Math.PI * 2
+      const n1 = fbm3(Math.cos(u) * 3.2, Math.sin(u) * 3.2, 1.1, 4)
+      const n2 = fbm3(Math.cos(u) * 14.0, Math.sin(u) * 14.0, 2.7, 3)
+      const spire = Math.pow(n2, 1.35) * 44
+      const canopyH = Math.min(124, 52 + n1 * 40 + spire)
+      for (let y = 0; y < 128; y++) {
+        const hFromBottom = 127 - y
+        const idx = (y * 512 + x) * 4
+        if (hFromBottom > canopyH) {
+          fData[idx + 3] = 0
+          continue
+        }
+        // Fine foliage needle/leaf stipple so edges look feathery & organic
+        const edgeDist = canopyH - hFromBottom
+        const grain = ((Math.sin(x * 19.31 + y * 43.17) * 43758.5453) % 1 + 1) % 1
+        if (edgeDist < 9 && grain > edgeDist / 9) {
+          fData[idx + 3] = 0
+          continue
+        }
+        const depth = fbm3(x * 0.09, y * 0.09, 5.2, 3)
+        const sunTop = Math.min(1, hFromBottom / Math.max(1, canopyH))
+        const shade = 0.44 + sunTop * 0.56 * (0.65 + depth * 0.55)
+        fData[idx] = Math.min(255, Math.floor((30 + grain * 18) * shade))
+        fData[idx + 1] = Math.min(255, Math.floor((66 + grain * 26) * shade))
+        fData[idx + 2] = Math.min(255, Math.floor((34 + grain * 14) * shade))
+        // Softly blend bottom edge into terrain
+        fData[idx + 3] = hFromBottom < 6 ? Math.floor((hFromBottom / 6) * 255) : 255
+      }
+    }
+    fCtx.putImageData(fImg, 0, 0)
+
+    const forestHorizonTex = new THREE.CanvasTexture(fCanvas)
+    forestHorizonTex.colorSpace = THREE.SRGBColorSpace
+    forestHorizonTex.wrapS = THREE.RepeatWrapping
+    forestHorizonTex.repeat.set(5, 1)
+    const forestSilhouetteMesh = new THREE.Mesh(
+      new THREE.CylinderGeometry(129, 129, 24, 64, 1, true),
+      new THREE.MeshStandardMaterial({
+        map: forestHorizonTex,
+        alphaTest: 0.3,
+        transparent: true,
+        roughness: 0.95,
+        metalness: 0.01,
+        side: THREE.DoubleSide,
+      })
+    )
+    forestSilhouetteMesh.position.y = 9.0
+    earthSceneGroup.add(forestSilhouetteMesh)
+
+    // Tier 2 (Further): High Alpine Snowy Mountain Range behind the Rocky Brown Range
+    const snowyMtnGeo = new THREE.RingGeometry(208, 325, 72, 10)
+    snowyMtnGeo.rotateX(-Math.PI / 2)
+    const smPos = snowyMtnGeo.attributes.position
+    const smColors = new Float32Array(smPos.count * 3)
+    for (let i = 0; i < smPos.count; i++) {
+      const vx = smPos.getX(i)
+      const vz = smPos.getZ(i)
+      const dist = Math.hypot(vx, vz)
+      const t = Math.max(0, Math.min(1, (dist - 210) / 105))
+      const ridge = fbm3(vx * 0.011 - 4.3, 0.7, vz * 0.011 + 2.9, 4)
+      const peak = Math.pow(t, 1.15) * (24 + ridge * 64)
+      smPos.setY(i, -2 + peak)
+      const snow = Math.max(0, Math.min(1, (peak - 32) / 18))
+      smColors[i * 3] = 0.32 * (1 - snow) + 0.89 * snow
+      smColors[i * 3 + 1] = 0.35 * (1 - snow) + 0.92 * snow
+      smColors[i * 3 + 2] = 0.40 * (1 - snow) + 0.97 * snow
+    }
+    snowyMtnGeo.setAttribute('color', new THREE.BufferAttribute(smColors, 3))
+    snowyMtnGeo.computeVertexNormals()
+    const snowyMtnMesh = new THREE.Mesh(
+      snowyMtnGeo,
+      new THREE.MeshStandardMaterial({
+        vertexColors: true,
+        roughness: 0.9,
+        metalness: 0.03,
+        flatShading: true,
+      })
+    )
+    earthSceneGroup.add(snowyMtnMesh)
+
+    const treePerches: Array<{ x: number; y: number; z: number }> = []
 
     // 3D Photorealistic Branching Trees (Golden Birch/Aspen, Green Broadleaf, and Pines)
     const makeBarkTexture = (baseHex: string, streakHex: string, horizontal: boolean) => {
@@ -1660,16 +2056,17 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
       metalness: 0.02,
     })
 
-    // Alpha-tested leaf-cluster sprite texture so sky peeks through individual leaves
+    // Alpha-tested leaf-cluster sprite texture (fast 128x128)
     const makeLeafClusterTexture = (palette: string[]) => {
       const c = document.createElement('canvas')
-      c.width = 256
-      c.height = 256
+      c.width = 128
+      c.height = 128
       const ctx = c.getContext('2d')!
+      ctx.scale(0.5, 0.5)
       ctx.clearRect(0, 0, 256, 256)
-      for (let i = 0; i < 190; i++) {
+      for (let i = 0; i < 95; i++) {
         const ang = (i * 2.399963) % (Math.PI * 2)
-        const rad = Math.sqrt(i / 190) * 102
+        const rad = Math.sqrt(i / 95) * 102
         const lx = 128 + Math.cos(ang) * rad + Math.sin(i * 3.1) * 8
         const ly = 128 + Math.sin(ang) * rad + Math.cos(i * 2.7) * 8
         const lw = 10 + (i % 7) * 1.8
@@ -1820,6 +2217,103 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
       tree.rotation.z = Math.sin(i * 2.1) * 0.035
       tree.position.set(tx, -2, tz)
       earthSceneGroup.add(tree)
+      treePerches.push({ x: tx, y: 6.8 + (i % 4) * 1.4, z: tz })
+    }
+
+    // B2c. Realistic Articulated Birds Flying Occasionally From Tree to Tree
+    type BirdAgent = {
+      group: THREE.Group
+      leftInner: THREE.Group
+      leftOuter: THREE.Group
+      rightInner: THREE.Group
+      rightOuter: THREE.Group
+      fromIdx: number
+      toIdx: number
+      flying: boolean
+      timer: number
+      duration: number
+      flapPhase: number
+    }
+    const birdAgents: BirdAgent[] = []
+    if (treePerches.length >= 4) {
+      const birdFeatherMat = new THREE.MeshStandardMaterial({ color: 0x4b3b30, roughness: 0.82 })
+      const birdBellyMat = new THREE.MeshStandardMaterial({ color: 0xd8cfc2, roughness: 0.85 })
+      const birdWingMat = new THREE.MeshStandardMaterial({ color: 0x3a2e26, roughness: 0.8, side: THREE.DoubleSide })
+      const birdBeakMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.5 })
+
+      const buildWing = (dir: 1 | -1) => {
+        const inner = new THREE.Group()
+        const innerGeo = new THREE.BoxGeometry(0.62, 0.035, 0.28)
+        innerGeo.translate(dir * 0.31, 0, 0)
+        const innerMesh = new THREE.Mesh(innerGeo, birdWingMat)
+        inner.add(innerMesh)
+
+        const outer = new THREE.Group()
+        outer.position.set(dir * 0.62, 0, 0)
+        const outerGeo = new THREE.ConeGeometry(0.14, 0.58, 4)
+        outerGeo.rotateZ(dir * -Math.PI / 2)
+        outerGeo.scale(1, 0.18, 1.3)
+        outerGeo.translate(dir * 0.29, 0, -0.02)
+        const outerMesh = new THREE.Mesh(outerGeo, birdWingMat)
+        outer.add(outerMesh)
+        inner.add(outer)
+        return { inner, outer }
+      }
+
+      for (let bi = 0; bi < 3; bi++) {
+        const bGroup = new THREE.Group()
+        const body = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), birdFeatherMat)
+        body.scale.set(0.85, 0.78, 1.85)
+        bGroup.add(body)
+
+        const belly = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 6), birdBellyMat)
+        belly.position.set(0, -0.04, 0.03)
+        belly.scale.set(0.78, 0.68, 1.55)
+        bGroup.add(belly)
+
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), birdFeatherMat)
+        head.position.set(0, 0.13, 0.32)
+        bGroup.add(head)
+
+        const beak = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.16, 6), birdBeakMat)
+        beak.rotation.x = Math.PI / 2
+        beak.position.set(0, 0.11, 0.48)
+        bGroup.add(beak)
+
+        const tail = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.025, 0.34), birdWingMat)
+        tail.position.set(0, 0.03, -0.44)
+        tail.rotation.x = 0.12
+        bGroup.add(tail)
+
+        const leftW = buildWing(-1)
+        leftW.inner.position.set(-0.14, 0.05, 0.04)
+        bGroup.add(leftW.inner)
+
+        const rightW = buildWing(1)
+        rightW.inner.position.set(0.14, 0.05, 0.04)
+        bGroup.add(rightW.inner)
+
+        const startIdx = (bi * 7) % treePerches.length
+        const nextIdx = (startIdx + 5) % treePerches.length
+        const startPos = treePerches[startIdx]
+        bGroup.position.set(startPos.x, startPos.y, startPos.z)
+        bGroup.scale.setScalar(1.25)
+        earthSceneGroup.add(bGroup)
+
+        birdAgents.push({
+          group: bGroup,
+          leftInner: leftW.inner,
+          leftOuter: leftW.outer,
+          rightInner: rightW.inner,
+          rightOuter: rightW.outer,
+          fromIdx: startIdx,
+          toIdx: nextIdx,
+          flying: bi === 0,
+          timer: bi * 1.8,
+          duration: 3.4 + bi * 0.6,
+          flapPhase: bi * 2.1,
+        })
+      }
     }
 
     // 4 Corner Floodlight Towers & 2 Cryogenic Propellant Spheres
@@ -2108,23 +2602,29 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
     // =======================================================================
     // 6. REALISTIC 3D MARS CANYON ENVIRONMENT (Pad at Ground Level)
     // =======================================================================
+    await yieldFrame()
+    if (disposed) {
+      renderer.dispose()
+      return () => {}
+    }
+
     const marsEnvironment = new THREE.Group()
     marsEnvironment.position.set(0, 0, 0)
     marsEnvironment.visible = false
     scene.add(marsEnvironment)
 
     // A. 360-Degree Panoramic Photographic Martian Canyon Backdrop (texture deferred until after first Earth frame)
-    const marsPanoramaGeo = new THREE.CylinderGeometry(320, 320, 180, 64, 1, true)
+    const marsPanoramaGeo = new THREE.CylinderGeometry(520, 520, 260, 64, 1, true)
     const marsPanoramaMat = new THREE.MeshBasicMaterial({
       color: 0x591307,
       side: THREE.BackSide,
     })
     const marsPanoramaMesh = new THREE.Mesh(marsPanoramaGeo, marsPanoramaMat)
-    marsPanoramaMesh.position.y = 80
+    marsPanoramaMesh.position.y = 110
     marsEnvironment.add(marsPanoramaMesh)
 
     // B. Hyper-Realistic 3D Displaced Martian Canyon & Regolith Terrain
-    const marsGroundGeo = new THREE.PlaneGeometry(800, 800, 96, 96)
+    const marsGroundGeo = new THREE.PlaneGeometry(1200, 1200, 96, 96)
     marsGroundGeo.rotateX(-Math.PI / 2)
     const mPos = marsGroundGeo.attributes.position
     for (let i = 0; i < mPos.count; i++) {
@@ -2157,6 +2657,7 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
     })
 
     // Defer heavy Mars procedural textures until after initial Earth scene renders
+    // Defer heavy Mars procedural textures until after initial Earth scene renders
     const marsTexTimer = window.setTimeout(() => {
       marsPanoramaMat.color.setHex(0xffffff)
       marsPanoramaMat.map = createMarsPanoramicTexture()
@@ -2170,6 +2671,11 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
 
       boulderMat.bumpMap = marsRegolith.bumpMap
       boulderMat.needsUpdate = true
+
+      marsMtnMat.color.setHex(0xffffff)
+      marsMtnMat.map = marsRegolith.map
+      marsMtnMat.bumpMap = marsRegolith.bumpMap
+      marsMtnMat.needsUpdate = true
     }, 60)
     const marsGroundMesh = new THREE.Mesh(marsGroundGeo, marsGroundMat)
     marsGroundMesh.position.y = 0
@@ -2193,6 +2699,208 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
       boulder.position.set(bx, 0.8, bz)
       boulder.rotation.set(i * 0.4, i * 1.1, i * 0.2)
       marsEnvironment.add(boulder)
+    }
+
+    // C1b. Distant Hyper-Realistic 3D Martian Crater Rim Mountain Range (Pushed Further to the Horizon)
+    const marsMtnGeo = new THREE.RingGeometry(180, 420, 160, 32)
+    marsMtnGeo.rotateX(-Math.PI / 2)
+    const mmPos = marsMtnGeo.attributes.position
+    const mmColors = new Float32Array(mmPos.count * 3)
+    for (let i = 0; i < mmPos.count; i++) {
+      const vx = mmPos.getX(i)
+      const vz = mmPos.getZ(i)
+      const dist = Math.hypot(vx, vz)
+      const t = Math.max(0, Math.min(1, (dist - 185) / 225))
+      const ridgeBase = fbm3(vx * 0.009 + 2.4, 0.4, vz * 0.009 - 3.1, 4)
+      const sharpRidge = 1 - Math.abs(fbm3(vx * 0.021 - 0.7, 0.5, vz * 0.021 + 1.6, 3) - 0.5) * 2
+      const fineCrag = fbm3(vx * 0.055, 0.2, vz * 0.055, 2)
+      const rawPeak = Math.sin(t * Math.PI * 0.94) * (26 + ridgeBase * 46 + Math.pow(sharpRidge, 1.35) * 64 + fineCrag * 16)
+      // Stepped sedimentary stratification terraces (Martian canyon geology)
+      const terrace = Math.floor(rawPeak / 6.5) * 6.5 + Math.pow((rawPeak % 6.5) / 6.5, 2.0) * 6.5
+      const peak = rawPeak * 0.40 + terrace * 0.60
+      mmPos.setY(i, peak)
+
+      // Authentic Martian iron-oxide mineral color mapping
+      const crevice = 0.52 + sharpRidge * 0.48
+      mmColors[i * 3] = Math.min(1, (0.88 + fineCrag * 0.18) * crevice)
+      mmColors[i * 3 + 1] = Math.min(1, (0.34 + fineCrag * 0.1) * crevice)
+      mmColors[i * 3 + 2] = Math.min(1, (0.18 + fineCrag * 0.06) * crevice)
+    }
+    marsMtnGeo.setAttribute('color', new THREE.BufferAttribute(mmColors, 3))
+    marsMtnGeo.computeVertexNormals()
+    const marsMtnMat = new THREE.MeshStandardMaterial({
+      color: 0x8f341a,
+      vertexColors: true,
+      roughness: 0.94,
+      metalness: 0.04,
+    })
+    const marsMtnMesh = new THREE.Mesh(marsMtnGeo, marsMtnMat)
+    marsEnvironment.add(marsMtnMesh)
+
+    // C1c. 8 Massive Craggy Martian Perimeter Boulders (vantage points for alien crawling & peeping)
+    type BoulderInfo = { x: number; y: number; z: number; r: number; angle: number; dist: number }
+    const bigMarsBoulders: BoulderInfo[] = []
+    const bigBoulderSpots = [
+      { angle: 0.12 * Math.PI, dist: 48, rad: 6.2 },
+      { angle: 0.38 * Math.PI, dist: 44, rad: 5.8 },
+      { angle: 0.65 * Math.PI, dist: 52, rad: 6.6 },
+      { angle: 0.92 * Math.PI, dist: 46, rad: 5.9 },
+      { angle: 1.18 * Math.PI, dist: 50, rad: 6.8 },
+      { angle: 1.45 * Math.PI, dist: 45, rad: 5.7 },
+      { angle: 1.70 * Math.PI, dist: 51, rad: 6.4 },
+      { angle: 1.92 * Math.PI, dist: 47, rad: 6.0 },
+    ]
+    bigBoulderSpots.forEach((bs, bi) => {
+      const bx = Math.cos(bs.angle) * bs.dist
+      const bz = Math.sin(bs.angle) * bs.dist
+      const bg = new THREE.IcosahedronGeometry(bs.rad, 2)
+      const bp = bg.attributes.position
+      for (let v = 0; v < bp.count; v++) {
+        const px = bp.getX(v)
+        const py = bp.getY(v)
+        const pz = bp.getZ(v)
+        const disp = 0.76 + fbm3(px * 0.42 + bi * 2.3, py * 0.42, pz * 0.42, 3) * 0.48
+        bp.setXYZ(v, px * disp, py * disp * 0.78, pz * disp)
+      }
+      bg.computeVertexNormals()
+      const bigMesh = new THREE.Mesh(bg, boulderMat)
+      bigMesh.position.set(bx, bs.rad * 0.35, bz)
+      bigMesh.rotation.set(bi * 0.35, bi * 1.35, bi * 0.22)
+      marsEnvironment.add(bigMesh)
+      bigMarsBoulders.push({ x: bx, y: 0, z: bz, r: bs.rad, angle: bs.angle, dist: bs.dist })
+    })
+
+    // C1d. 3 Realistic Articulated Green Aliens (crawling across boulders & peeping from behind them)
+    type AlienAgent = {
+      group: THREE.Group
+      torso: THREE.Group
+      head: THREE.Group
+      leftArm: THREE.Group
+      rightArm: THREE.Group
+      leftLeg: THREE.Group
+      rightLeg: THREE.Group
+      fromIdx: number
+      toIdx: number
+      direction: 1 | -1
+      state: 'peep' | 'crawl'
+      timer: number
+      duration: number
+      gaitPhase: number
+      peekSide: 1 | -1
+    }
+    const alienAgents: AlienAgent[] = []
+    const alienSkinMat = new THREE.MeshStandardMaterial({
+      color: 0x3e8a42,
+      roughness: 0.44,
+      metalness: 0.05,
+    })
+    const alienDarkMat = new THREE.MeshStandardMaterial({
+      color: 0x1b431e,
+      roughness: 0.52,
+      metalness: 0.04,
+    })
+    const alienEyeMat = new THREE.MeshPhysicalMaterial({
+      color: 0x06090c,
+      roughness: 0.04,
+      metalness: 0.2,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.04,
+    })
+
+    const buildAlienLimb = (len: number, radius: number) => {
+      const limb = new THREE.Group()
+      const upper = new THREE.Mesh(new THREE.CapsuleGeometry(radius, len * 0.52, 4, 8), alienSkinMat)
+      upper.position.y = -len * 0.28
+      limb.add(upper)
+      const lower = new THREE.Mesh(new THREE.CapsuleGeometry(radius * 0.82, len * 0.48, 4, 8), alienDarkMat)
+      lower.position.y = -len * 0.75
+      limb.add(lower)
+      const claw = new THREE.Mesh(new THREE.ConeGeometry(radius * 0.75, len * 0.22, 4), alienDarkMat)
+      claw.position.y = -len * 1.04
+      claw.rotation.x = Math.PI
+      limb.add(claw)
+      return limb
+    }
+
+    for (let ai = 0; ai < 3; ai++) {
+      const aGroup = new THREE.Group()
+      const torso = new THREE.Group()
+      torso.position.y = 1.05
+      aGroup.add(torso)
+
+      const chest = new THREE.Mesh(new THREE.CapsuleGeometry(0.32, 0.62, 6, 10), alienSkinMat)
+      torso.add(chest)
+      const spine = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 0.55, 4, 8), alienDarkMat)
+      spine.position.set(0, 0.05, -0.18)
+      torso.add(spine)
+
+      const head = new THREE.Group()
+      head.position.set(0, 0.62, 0.08)
+      torso.add(head)
+
+      const cranium = new THREE.Mesh(new THREE.SphereGeometry(0.32, 12, 10), alienSkinMat)
+      cranium.scale.set(0.88, 1.18, 1.12)
+      head.add(cranium)
+
+      const jaw = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), alienSkinMat)
+      jaw.position.set(0, -0.18, 0.14)
+      jaw.scale.set(0.85, 0.9, 1.1)
+      head.add(jaw)
+
+      // Large glossy obsidian-black almond eyes
+      for (const side of [-1, 1]) {
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 8), alienEyeMat)
+        eye.position.set(side * 0.14, 0.02, 0.25)
+        eye.scale.set(0.85, 1.35, 0.65)
+        eye.rotation.z = side * -0.28
+        eye.rotation.y = side * 0.25
+        head.add(eye)
+      }
+
+      const leftArm = buildAlienLimb(0.95, 0.085)
+      leftArm.position.set(-0.34, 0.34, 0.05)
+      torso.add(leftArm)
+
+      const rightArm = buildAlienLimb(0.95, 0.085)
+      rightArm.position.set(0.34, 0.34, 0.05)
+      torso.add(rightArm)
+
+      const leftLeg = buildAlienLimb(1.05, 0.1)
+      leftLeg.position.set(-0.2, -0.34, 0)
+      torso.add(leftLeg)
+
+      const rightLeg = buildAlienLimb(1.05, 0.1)
+      rightLeg.position.set(0.2, -0.34, 0)
+      torso.add(rightLeg)
+
+      const startBIdx = (ai * 3) % bigMarsBoulders.length
+      const startB = bigMarsBoulders[startBIdx]
+      // Start behind the boulder on the far perimeter side (hidden from the rocket)
+      const outX = Math.cos(startB.angle)
+      const outZ = Math.sin(startB.angle)
+      aGroup.position.set(startB.x + outX * (startB.r * 1.25), 0, startB.z + outZ * (startB.r * 1.25))
+      // Noticeably bigger aliens for clear presence and authentic realism!
+      aGroup.scale.setScalar(2.25)
+      marsEnvironment.add(aGroup)
+
+      const dir: 1 | -1 = ai % 2 === 0 ? 1 : -1
+      alienAgents.push({
+        group: aGroup,
+        torso,
+        head,
+        leftArm,
+        rightArm,
+        leftLeg,
+        rightLeg,
+        fromIdx: startBIdx,
+        toIdx: (startBIdx + dir + bigMarsBoulders.length) % bigMarsBoulders.length,
+        direction: dir,
+        state: 'peep',
+        timer: ai * 1.8,
+        duration: 4.5 + ai * 0.8,
+        gaitPhase: ai * 1.5,
+        peekSide: ai % 2 === 0 ? 1 : -1,
+      })
     }
 
     // C2. 3D Jezero Base Outpost (Geodesic Habitat Dome, Solar Wings & Comms Dish)
@@ -2259,7 +2967,7 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
     // 360-Degree Interactive Mouse Hover & Touch Drag Look-Around
     // (Explore Earth mountains/sky & Mars canyons/boulders in full 360!)
     // =======================================================================
-    container.style.touchAction = 'none'
+    container!.style.touchAction = 'none'
     const lookState = {
       yaw: 0,
       pitch: 0,
@@ -2376,6 +3084,67 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
         moonMesh.visible = false
         marsMesh.visible = false
         marsEnvironment.visible = false
+
+        // Realistic Birds Flying From Tree to Tree with Articulated Flapping Wings
+        for (let bi = 0; bi < birdAgents.length; bi++) {
+          const bird = birdAgents[bi]
+          bird.timer += delta
+          if (bird.flying) {
+            const t = Math.min(1, bird.timer / bird.duration)
+            const fromP = treePerches[bird.fromIdx]
+            const toP = treePerches[bird.toIdx]
+            const arc = Math.sin(t * Math.PI) * 7.5
+            const bx = THREE.MathUtils.lerp(fromP.x, toP.x, t) + Math.sin(t * Math.PI) * (bi % 2 === 0 ? 3.5 : -3.5)
+            const by = THREE.MathUtils.lerp(fromP.y, toP.y, t) + arc
+            const bz = THREE.MathUtils.lerp(fromP.z, toP.z, t)
+            const dx = toP.x - fromP.x
+            const dz = toP.z - fromP.z
+            bird.group.position.set(bx, by, bz)
+            bird.group.rotation.y = Math.atan2(dx, dz)
+            bird.group.rotation.x = -Math.cos(t * Math.PI) * 0.25
+            bird.group.rotation.z = Math.sin(t * Math.PI) * (bi % 2 === 0 ? -0.22 : 0.22)
+
+            // Realistic flapping with brief glide near landing
+            if (t < 0.78) {
+              bird.flapPhase += delta * 18
+              const flap = Math.sin(bird.flapPhase) * 0.62 + 0.08
+              const tipFlex = Math.sin(bird.flapPhase - 0.65) * 0.45
+              bird.leftInner.rotation.z = -flap
+              bird.leftOuter.rotation.z = -tipFlex
+              bird.rightInner.rotation.z = flap
+              bird.rightOuter.rotation.z = tipFlex
+            } else {
+              // Glide wings level as bird descends to perch
+              bird.leftInner.rotation.z = THREE.MathUtils.lerp(bird.leftInner.rotation.z, -0.1, delta * 8)
+              bird.leftOuter.rotation.z = THREE.MathUtils.lerp(bird.leftOuter.rotation.z, -0.05, delta * 8)
+              bird.rightInner.rotation.z = THREE.MathUtils.lerp(bird.rightInner.rotation.z, 0.1, delta * 8)
+              bird.rightOuter.rotation.z = THREE.MathUtils.lerp(bird.rightOuter.rotation.z, 0.05, delta * 8)
+            }
+
+            if (t >= 1) {
+              bird.flying = false
+              bird.timer = 0
+              bird.duration = 2.5 + (bi + Math.floor(time)) % 4
+              bird.fromIdx = bird.toIdx
+              bird.toIdx = (bird.toIdx + 5 + bi * 3) % treePerches.length
+            }
+          } else {
+            // Perched on tree canopy with wings folded
+            const perch = treePerches[bird.fromIdx]
+            bird.group.position.set(perch.x, perch.y, perch.z)
+            bird.group.rotation.x = 0
+            bird.group.rotation.z = 0
+            bird.leftInner.rotation.z = 0.75
+            bird.leftOuter.rotation.z = 0.2
+            bird.rightInner.rotation.z = -0.75
+            bird.rightOuter.rotation.z = -0.2
+            if (bird.timer >= bird.duration) {
+              bird.flying = true
+              bird.timer = 0
+              bird.duration = 3.2 + bi * 0.55
+            }
+          }
+        }
 
         // Realistic camera angle panning smoothly with mouse/drag around the pad & mountains
         const isMobilePad = typeof window !== 'undefined' && window.innerWidth < 768
@@ -2591,9 +3360,178 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
         camera.lookAt(0, 14.0 + pitch * 6, 0)
       }
 
+      // Realistic Articulated Green Aliens Crawling Between Perimeter Boulders & Peeping Behind Them at the Rocket
+      if (marsEnvironment.visible) {
+        for (let ai = 0; ai < alienAgents.length; ai++) {
+          const alien = alienAgents[ai]
+          alien.timer += delta
+          const bFrom = bigMarsBoulders[alien.fromIdx]
+          const bTo = bigMarsBoulders[alien.toIdx]
+
+          // Radial unit vector outward from the rocket (0, 0) through boulder
+          const outFromX = Math.cos(bFrom.angle)
+          const outFromZ = Math.sin(bFrom.angle)
+
+          if (alien.state === 'peep') {
+            const pNorm = Math.min(1, alien.timer / alien.duration)
+            const peepPhase = Math.sin(pNorm * Math.PI)
+            const peepLean = Math.pow(peepPhase, 0.65) // lingering peek
+
+            // Tangent vector along boulder perimeter (perpendicular to radial, in horizontal plane)
+            const tanX = -Math.sin(bFrom.angle)
+            const tanZ =  Math.cos(bFrom.angle)
+
+            // ── CORRECT OCCLUSION GEOMETRY ───────────────────────────────────────
+            // outFromX/Z points FROM rocket TOWARD boulder.
+            // Placing alien at boulder + outFrom*(r+margin) puts it on the FAR side — fully hidden.
+            const behindX = bFrom.x + outFromX * (bFrom.r * 1.25)
+            const behindZ = bFrom.z + outFromZ * (bFrom.r * 1.25)
+
+            // Slide tangentially: at peepLean=0 fully hidden, at peepLean=1 head just clears edge.
+            // Max boulder displacement is 1.24*r, so 1.22*r brings head/shoulder cleanly past the side.
+            const peekSlide = bFrom.r * 1.22 * peepLean * alien.peekSide
+            const bX = behindX + tanX * peekSlide
+            const bZ = behindZ + tanZ * peekSlide
+
+            alien.group.position.set(bX, 0, bZ)
+
+            // Face toward the rocket while peeking
+            const angleToRocket = Math.atan2(-bFrom.x, -bFrom.z)
+            alien.group.rotation.y = angleToRocket
+            alien.group.rotation.x = 0
+            alien.group.rotation.z = 0
+
+            // Body upright behind rock, feet on ground (torso.y=1.55 for 2.25× scale)
+            alien.torso.position.y = 1.55
+            alien.torso.position.x = 0
+            alien.torso.rotation.x = 0.28  // slight forward lean
+            alien.torso.rotation.y = alien.peekSide * 0.25 * peepLean  // subtle twist toward peek side
+            alien.torso.rotation.z = 0
+
+            // Head turns to look around boulder edge at the rocket
+            alien.head.position.x = 0
+            alien.head.position.y = 0.62
+            alien.head.rotation.x = -0.18
+            alien.head.rotation.y = alien.peekSide * 0.42 * peepLean  // rotates to look at rocket
+            alien.head.rotation.z = 0
+
+            // Arms: relaxed, braced against rock surface
+            alien.rightArm.rotation.x = -0.3
+            alien.rightArm.rotation.z =  0.45
+            alien.leftArm.rotation.x  = -0.3
+            alien.leftArm.rotation.z  = -0.45
+
+            // Legs: standing, slight squat
+            alien.leftLeg.rotation.x  = -0.35
+            alien.leftLeg.rotation.z  = -0.14
+            alien.rightLeg.rotation.x = -0.35
+            alien.rightLeg.rotation.z =  0.14
+
+            // Duck back and crawl to next boulder
+            if (alien.timer >= alien.duration) {
+              alien.state = 'crawl'
+              alien.timer = 0
+              alien.duration = 4.8 + ((ai * 1.2) % 1.8)
+            }
+          } else {
+            // Alien crawling smoothly on all fours across Martian surface to next boulder (grounded, no flying!)
+            const cNorm = Math.min(1, alien.timer / alien.duration)
+            const easeT = cNorm * cNorm * (3 - 2 * cNorm)
+
+            // Reset lateral lean
+            alien.torso.position.x = 0
+            alien.head.position.x = 0
+
+            // Arc at OUTER FACE of boulders (dist + radius * 1.25) so alien walks AROUND rocks, never through them
+            const fromOuterDist = bFrom.dist + bFrom.r * 1.25
+            const toOuterDist   = bTo.dist   + bTo.r   * 1.25
+
+            let angleDiff = bTo.angle - bFrom.angle
+            while (angleDiff > Math.PI) angleDiff -= Math.PI * 2
+            while (angleDiff < -Math.PI) angleDiff += Math.PI * 2
+
+            const curAngle = bFrom.angle + angleDiff * easeT
+            // Smooth hump outward in mid-journey to stay clear of any rocks between boulders
+            const curDist = THREE.MathUtils.lerp(fromOuterDist, toOuterDist, easeT) + Math.sin(easeT * Math.PI) * 2.5
+            const cX = Math.cos(curAngle) * curDist
+            const cZ = Math.sin(curAngle) * curDist
+
+            alien.group.position.set(cX, 0, cZ)
+
+            // Look directly along the actual instantaneous movement vector
+            const nextEase = Math.min(1, easeT + 0.01)
+            const nextAngle = bFrom.angle + angleDiff * nextEase
+            const nextDist = THREE.MathUtils.lerp(fromOuterDist, toOuterDist, nextEase) + Math.sin(nextEase * Math.PI) * 2.5
+            const nextX = Math.cos(nextAngle) * nextDist
+            const nextZ = Math.sin(nextAngle) * nextDist
+            const moveDirX = nextX - cX
+            const moveDirZ = nextZ - cZ
+
+            // Alien (+Z front face) points 100% in the exact direction it is crawling
+            alien.group.rotation.y = Math.atan2(moveDirX, moveDirZ)
+            alien.group.rotation.x = 0
+            alien.group.rotation.z = 0
+
+            // 4-phase diagonal trot kinematics
+            alien.gaitPhase += delta * 6.5
+
+            const ph = alien.gaitPhase
+            // Diagonal pairs: FL+BR in phase, FR+BL offset by π
+            const fl = Math.sin(ph)
+            const br = Math.sin(ph)
+            const fr = Math.sin(ph + Math.PI)
+            const bl = Math.sin(ph + Math.PI)
+
+            // Torso: 1.30 keeps feet grounded when hunched at 48° forward (torso.rotation.x=0.84)
+            alien.torso.position.y = 1.30 + Math.abs(Math.sin(ph * 2)) * 0.05
+            alien.torso.rotation.x = 0.84                 // hunched quadruped lean
+            alien.torso.rotation.y = Math.sin(ph) * 0.09 // spine lateral yaw
+            alien.torso.rotation.z = Math.cos(ph) * 0.05 // subtle roll
+
+            // Head forward-looking with slight bob
+            alien.head.position.y = 0.62
+            alien.head.rotation.x = -0.72 + Math.sin(ph * 2) * 0.05
+            alien.head.rotation.y = Math.sin(ph * 0.5) * 0.08
+            alien.head.rotation.z = 0
+
+            // Arms: front limbs drive forward/backward with proper diagonal swing
+            // Positive x rotation = arm swings forward (elbow extends)
+            alien.leftArm.rotation.x  = -0.28 + fl * 0.65   // FL swings forward when fl > 0
+            alien.leftArm.rotation.z  = -0.32 + fl * 0.12
+            alien.rightArm.rotation.x = -0.28 + fr * 0.65   // FR swings forward when fr > 0
+            alien.rightArm.rotation.z =  0.32 - fr * 0.12
+
+            // Legs: rear limbs drive in diagonal opposition to front
+            alien.leftLeg.rotation.x  = 0.22 + bl * 0.60    // BL drives when bl > 0
+            alien.leftLeg.rotation.z  = -0.22
+            alien.rightLeg.rotation.x = 0.22 + br * 0.60    // BR drives when br > 0
+            alien.rightLeg.rotation.z =  0.22
+
+            // Arrived safely behind adjacent boulder
+            if (cNorm >= 1) {
+              alien.state = 'peep'
+              alien.timer = 0
+              alien.duration = 4.5 + ((ai * 1.5) % 2.8)
+              alien.fromIdx = alien.toIdx
+              // Direction continuation or occasional reversal
+              const reverse = Math.random() < 0.2 ? -1 : 1
+              alien.direction = (alien.direction * reverse) as 1 | -1
+              alien.toIdx = (alien.fromIdx + alien.direction + bigMarsBoulders.length) % bigMarsBoulders.length
+              alien.peekSide = alien.peekSide === 1 ? -1 : 1
+            }
+          }
+        }
+      }
+
       renderer.render(scene, camera)
+      if (!firstFrameDone) {
+        firstFrameDone = true
+        setLoadProgress(100)
+        window.setTimeout(() => setSceneReady(true), 160)
+      }
     }
 
+    let firstFrameDone = false
     animate()
 
     return () => {
@@ -2605,9 +3543,16 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
       window.removeEventListener('pointerup', handlePointerUp)
       window.removeEventListener('pointercancel', handlePointerUp)
       renderer.dispose()
-      if (container.contains(renderer.domElement)) {
+      if (container && container.contains(renderer.domElement)) {
         container.removeChild(renderer.domElement)
       }
+    }
+    }
+
+    return () => {
+      disposed = true
+      if (initRafId !== null) cancelAnimationFrame(initRafId)
+      if (cleanupThree) cleanupThree()
     }
   }, [dismissed])
 
@@ -2674,7 +3619,7 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
   }
 
   const finishFlight = () => {
-    hasCompletedThisPageLoad = true
+    try { sessionStorage.setItem(ROCKET_SHOWN_KEY, 'true') } catch { /* ignore */ }
     document.body.style.overflow = ''
     document.documentElement.style.overflow = ''
     setDismissed(true)
@@ -2695,6 +3640,20 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
       aria-modal="true"
       aria-label="Marsment 3D Rocket Launch Experience"
     >
+      {/* Sleek Minimal Loading Screen with Spinner */}
+      <div className={`rocket-preloader ${sceneReady ? 'is-ready' : ''}`} aria-hidden={sceneReady}>
+        <div className="rocket-preloader-inner">
+          <div className="rocket-preloader-brand">MARSMENT</div>
+          <div className="rocket-preloader-spinner-wrap">
+            <div className="rocket-preloader-spinner" />
+            <div className="rocket-preloader-spinner-core" />
+          </div>
+          <div className="rocket-preloader-meta">
+            <span>INITIALIZING LAUNCHPAD</span>
+          </div>
+        </div>
+      </div>
+
       {/* 3D WebGL Canvas */}
       <div ref={containerRef} className="threejs-canvas-host" />
 
@@ -3386,18 +4345,6 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
           </div>
         ) : stage === 'mars_touchdown' ? (
           <div className="mars-disembark-card">
-            <div className="disembark-badge">
-              <span className="dot-pulse" />
-              <span>EXPEDITION 01 • TOUCHDOWN CONFIRMED</span>
-            </div>
-
-            <h2 className="disembark-title">
-              MISSION ACCOMPLISHED • <span className="text-orange">WELCOME TO MARS</span>
-            </h2>
-            <p className="disembark-desc">
-              The rocket has landed safely at Jezero Base Alpha. Step out onto the Martian surface to explore our website.
-            </p>
-
             <button
               type="button"
               className="grand-mars-disembark-btn"
@@ -3406,15 +4353,15 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
             >
               <div className="btn-glow-pulse" />
               <div className="btn-content-inner">
-                <Compass className="disembark-btn-icon" size={22} />
+                <Compass className="disembark-btn-icon" size={18} />
                 <span className="btn-label-text">STEP ONTO MARS & VISIT THE WEBSITE</span>
-                <ChevronRight className="btn-arrow-icon" size={20} />
+                <ChevronRight className="btn-arrow-icon" size={18} />
               </div>
             </button>
 
             <div className="explore-look-hint">
-              <Compass size={13} className="text-cyan animate-spin-slow" />
-              <span>MOVE MOUSE OR DRAG TO EXPLORE THE SURROUNDING MARTIAN CANYON</span>
+              <Compass size={12} className="text-cyan animate-spin-slow" />
+              <span>DRAG TO EXPLORE MARTIAN TERRAIN & CREATURES</span>
             </div>
           </div>
         ) : (
