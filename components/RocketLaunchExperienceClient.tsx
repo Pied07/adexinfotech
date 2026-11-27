@@ -1,16 +1,14 @@
 'use client'
 
-// next/dynamic with ssr:false is only allowed inside Client Components.
-// SiteShell is an async Server Component, so this thin wrapper carries the
-// dynamic import while SiteShell stays a pure server component.
+// Keep the rocket preloader in the initial HTML so the home page is never
+// shown while the client bundle is downloading.
 import dynamic from 'next/dynamic'
 
 const RocketLaunchExperience = dynamic(
   () =>
     import('@/components/RocketLaunchExperience').then(m => ({
       default: m.RocketLaunchExperience,
-    })),
-  { ssr: false }
+    }))
 )
 
 export function RocketLaunchExperienceClient() {
