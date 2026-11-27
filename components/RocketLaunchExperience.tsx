@@ -851,10 +851,9 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
   const [stage, setStage] = useState<FlightStage>('earth_pad')
   const [isLaunched, setIsLaunched] = useState(false)
   const [audioEnabled, setAudioEnabled] = useState(false)
-  // SSR-safe: initialize to `true` always (server renders nothing for the rocket).
-  // A useEffect below updates this to `false` on the client if the rocket should show.
-  // This prevents server/client mismatches from sessionStorage reads in useState.
-  const [dismissed, setDismissed] = useState(true)
+  // Start the launch overlay immediately on the home route so the page underneath
+  // cannot flash before the effect checks sessionStorage. Other routes stay clear.
+  const [dismissed, setDismissed] = useState(pathname !== '/')
   const [, setLoadProgress] = useState(0)
   const [sceneReady, setSceneReady] = useState(false)
   const [progress, setProgress] = useState(0)
