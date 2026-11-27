@@ -915,6 +915,14 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
     document.body.style.overflow = 'hidden'
     document.documentElement.style.overflow = 'hidden'
 
+    return () => {
+      document.body.style.overflow = ''
+      document.documentElement.style.overflow = ''
+    }
+  }, [dismissed])
+
+  // Keep replay available even while the launch overlay is dismissed.
+  useEffect(() => {
     const handleReplay = () => {
       try { sessionStorage.removeItem(ROCKET_SHOWN_KEY) } catch { /* ignore */ }
       setStage('earth_pad')
@@ -932,12 +940,8 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
     }
 
     window.addEventListener('marsment:replay-launch', handleReplay)
-    return () => {
-      window.removeEventListener('marsment:replay-launch', handleReplay)
-      document.body.style.overflow = ''
-      document.documentElement.style.overflow = ''
-    }
-  }, [dismissed])
+    return () => window.removeEventListener('marsment:replay-launch', handleReplay)
+  }, [])
 
   // Sound Synthesizer
   const playSoundEffect = (type: 'ignite' | 'cabin' | 'warp' | 'plasma' | 'touchdown') => {
