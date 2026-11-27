@@ -823,26 +823,28 @@ function createMarsBumpTexture(): THREE.CanvasTexture {
   return tex
 }
 
-// sessionStorage key — present after rocket completes; cleared by browser on refresh/new tab.
-// This means the rocket shows on hard refresh but NOT on client-side navigation back to '/'.
+// sessionStorage key prevents replay during client-side navigation after a launch.
 const ROCKET_SHOWN_KEY = 'marsment:rocket-shown'
 
-// ── Navigation type detection (runs once at module evaluation) ─────────────
-// performance.navigation.type at THIS point reflects how the current page was
-// loaded — before any client-side routing happens.
-//   'reload'   → user pressed F5 / Ctrl+R → clear key so rocket shows again
-//   'navigate' → typed URL, clicked a link (even from the 404 page's own <html>
-//                root), or programmatic navigation → keep key, skip rocket
-if (typeof window !== 'undefined') {
+// On reload, replay only when the browser had to fetch the site's JavaScript
+// again. Cached Next.js chunks indicate a normal refresh; a cache-bypassing
+// refresh downloads them again.
+const SHOULD_SHOW_LAUNCH_ON_LOAD = (() => {
+  if (typeof window === 'undefined') return true
   try {
-    const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined
-    if (nav?.type === 'reload') {
-      // Hard refresh → clear so rocket plays again
-      sessionStorage.removeItem(ROCKET_SHOWN_KEY)
-    }
-  } catch { /* private mode / older browser — safe to ignore */ }
-}
+    const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined
+    if (navigation?.type !== 'reload') return true
 
+    const resources = performance.getEntriesByType('resource') as PerformanceResourceTiming[]
+    const nextScripts = resources.filter((entry) =>
+      entry.name.includes('/_next/static/') && /\.js(?:\?|$)/i.test(entry.name)
+    )
+    const cachedScript = nextScripts.some((entry) => entry.transferSize === 0 && entry.decodedBodySize > 0)
+    return !cachedScript
+  } catch {
+    return true
+  }
+})()
 // =========================================================================
 // MAIN COMPONENT
 // =========================================================================
@@ -867,6 +869,7 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
   const audioCtxRef = useRef<AudioContext | null>(null)
   const animFrameRef = useRef<number | null>(null)
   const stageRef = useRef<FlightStage>('earth_pad')
+  const initialLoadRef = useRef(true)
 
   useEffect(() => {
     stageRef.current = stage
@@ -875,19 +878,25 @@ export function RocketLaunchExperience({ onComplete }: { onComplete?: () => void
   // Client-only: determine whether rocket should actually show.
   // Runs after hydration — safe to read sessionStorage here.
   useEffect(() => {
+    if (initialLoadRef.current) {
+      initialLoadRef.current = false
+      if (pathname === '/') {
+        setDismissed(!SHOULD_SHOW_LAUNCH_ON_LOAD)
+        if (!SHOULD_SHOW_LAUNCH_ON_LOAD) {
+          try { sessionStorage.setItem(ROCKET_SHOWN_KEY, 'true') } catch { /* ignore */ }
+        }
+      } else {
+        setDismissed(true)
+      }
+      return
+    }
     if (pathname !== '/') {
-      // Not on home → always dismissed
       setDismissed(true)
       return
     }
     try {
-      if (sessionStorage.getItem(ROCKET_SHOWN_KEY) !== 'true') {
-        // Not yet shown this session → show rocket
-        setDismissed(false)
-      }
-      // else: already shown → dismissed stays true (no rocket)
+      setDismissed(sessionStorage.getItem(ROCKET_SHOWN_KEY) === 'true')
     } catch {
-      // sessionStorage blocked (private mode etc.) → show rocket
       setDismissed(false)
     }
   }, [pathname])
